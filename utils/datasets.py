@@ -59,7 +59,7 @@ def get_data(dataset, data_root, iid, num_users,data_aug, noniid_beta):
     
     if ds == 'cifar100':
         if data_aug :
-            print("data_aug:",data_aug)
+            print("---> Data_aug: ",data_aug)
             normalize = transforms.Normalize(mean=[0.507, 0.487, 0.441], std=[0.267, 0.256, 0.276])
             transform_train = transforms.Compose([transforms.RandomCrop(32, padding=4),
                                                 transforms.RandomHorizontalFlip(),#
@@ -184,12 +184,6 @@ def get_data(dataset, data_root, iid, num_users,data_aug, noniid_beta):
         dict_users, train_idxs, val_idxs = cifar_iid_MIA(train_set, num_users)
     else:
         dict_users, train_idxs, val_idxs = cifar_beta(train_set, noniid_beta, num_users)
-
-    # these dataloader would only be used in calculating accuracy and loss
-    test_loader = DataLoader(full_set, batch_size=10, shuffle=True)
-    for x, y in test_loader:
-        print("Batch features mean:", x.mean().item(), "std:", x.std().item())
-        break
 
     return train_set, test_set, train_set_mia, test_set_mia, dict_users, train_idxs, val_idxs
 

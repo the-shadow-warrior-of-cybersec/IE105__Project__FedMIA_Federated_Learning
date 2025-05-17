@@ -3,7 +3,7 @@ dataset=cicmaldroid # cifar100/ dermnet/ cicmaldroid
 model_name=mlp # alexnet/ ResNet18/ mlp
 opt=sgd
 seed=2025
-lr=0.01
+lr=0.1 # 0.1 for alexnet; 0.01 for mlp
 local_epoch=1
 
 
@@ -19,14 +19,14 @@ read -p "---> Nhập lựa chọn của bạn (1/2): " choice
 echo
 
 
-# Logic chính
+# Chạy thử nghiệm dựa trên lựa chọn của người dùng
 if [ "$choice" = "1" ]; then
     # iid experiment
     save_dir=log_fedmia/iid
     mkdir -p "$save_dir"
     echo "#################### Thử nghiệm IID ####################"
     echo
-    CUDA_VISIBLE_DEVICES=0 python main.py --seed $seed --num_users 10 --iid 1 \
+    CUDA_VISIBLE_DEVICES=0 python _federated_learning.py --seed $seed --num_users 10 --iid 1 \
      --dataset $dataset --model_name $model_name --epochs 25 --local_ep $local_epoch \
      --lr $lr --batch_size 64 --optim $opt --save_dir $save_dir --log_folder_name $save_dir \
      --lr_up cosine --MIA_mode 1 --gpu 0 2>&1 | tee "${save_dir}/raw_logs"
@@ -36,7 +36,7 @@ elif [ "$choice" = "2" ]; then
     mkdir -p "$save_dir"
     echo "#################### Thử nghiệm Non-IID ####################"
     echo
-    CUDA_VISIBLE_DEVICES=0 python main.py --seed $seed --num_users 10 --iid 0 --beta 1.0 \
+    CUDA_VISIBLE_DEVICES=0 python _federated_learning.py --seed $seed --num_users 10 --iid 0 --beta 1.0 \
      --dataset $dataset --model_name $model_name --epochs 25 --local_ep $local_epoch \
      --lr $lr --batch_size 64 --optim $opt --save_dir $save_dir --log_folder_name $save_dir \
      --lr_up cosine --MIA_mode 1 --gpu 0 2>&1 | tee "${save_dir}/raw_logs"

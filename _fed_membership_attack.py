@@ -12,7 +12,6 @@ import time
 import json
 import math
 import random
-
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -805,30 +804,32 @@ def attack_comparison(p,log_path, save_dir, epochs, MAX_K, defence,seed):
 
 
 def main(argv):
+
     global MODE, attack_modes, PATH, p_folder, device, select_mode, select_method, SHADOW_NUM, SEED, mix_length
     global SAVE_DIR
     
-    attack_modes=["cosine attack","grad diff","loss based","grad norm"]
-    epochs=list(range(10,int(argv[2])+1,10))
-    p_folder=argv[1]  
-    PATH=argv[1]
-    device=argv[3] 
-    MODE='mix'
+    attack_modes = ["cosine attack", "grad diff", "loss based", "grad norm"]
+    epochs = list(range(10, int(argv[2]) + 1, 10))
+    p_folder = argv[1]  
+    PATH = argv[1]
+    device = argv[3] 
+    MODE = 'mix'
     SEED = int(argv[4])
-    MAX_K=10
+    MAX_K = 10
     
     for root, dirs, files in os.walk(p_folder, topdown=False):
         for name in dirs:
-            if  root != p_folder: #or 's1' not in name or model not in name: #or 's5' not in name:
+            if  root != p_folder: 
                 continue
-            else: 
-                PATH=os.path.join(root, name)
-                PATH+="/client_{}_losses_epoch{}.pkl"
-                MAX_K=int(name.split("_K")[1].split("_")[0])
-                model=name.split("_")[3]
-                defence=name.split("_")[-5].strip('def').strip('0.0')
-                seed=name.split("_")[-1]
-                save_dir=p_folder + '/'+name
+            else:
+                # Lấy thông tin về quá trình train từ tên file model
+                PATH = os.path.join(root, name)
+                PATH += "/client_{}_losses_epoch{}.pkl"
+                MAX_K = int(name.split("_K")[1].split("_")[0])
+                model = name.split("_")[3]
+                defence = name.split("_")[-5].strip('def').strip('0.0')
+                seed = name.split("_")[-1]
+                save_dir = p_folder + '/' + name
                 SAVE_DIR = save_dir
 
                 if 'iid$1' in name:
@@ -839,41 +840,53 @@ def main(argv):
                     select_mode = 1
                     select_method ='outlier'
                     SHADOW_NUM = 4
-                print(os.path.join(root, name))
-
-                print('MODE\tattack_modes\tPATH\tp_folder\tselect_mode\tselect_method\tSHADOW_NUM\tSEED')
-                print(f'{MODE}\t{attack_modes}\t{PATH}\t{p_folder}\t{select_mode}\t{select_method}\t{SHADOW_NUM}\t{SEED}')
-                print("name:",name)
+                
+                print("#################### Các thông tin ####################\n")
+                print(f"1. Folder: {os.path.join(root, name)}")
+                print(f"2. Mode: {MODE}")
+                print(f"3. Attack modes: {attack_modes}")
+                print(f"4. Model path: {PATH}")
+                print(f"5. Parent folder: {p_folder}")
+                print(f"6. Select mode: {select_mode}")
+                print(f"7. Select method: {select_method}")
+                print(f"8. Shadow num: {SHADOW_NUM}")
+                print(f"9. Seed: {SEED}")
+                print(f"10. Model: {model}")
 
                 if 'cifar100' in name:
-                    mix_length=int(10000/MAX_K)
+                    mix_length = int(10000/MAX_K)
                 elif 'dermnet' in name:
-                    mix_length=4000
-                if model== "alexnet":
+                    mix_length = 4000
+                elif 'cicmaldroid' in name:
+                    mix_length = 232
+
+                if model == "alexnet":
                     log_path="logs/log_alex"
-                else:
+                elif model == "mlp":
+                    log_path="logs/log_mlp"
+                elif model == "resnet":
                     log_path="logs/log_res"
-                # print(MAX_K,PATH)
+
+                print("#################### Kết quả ####################\n")
                 try:
                     attack_comparison(PATH, log_path, save_dir, epochs, MAX_K, defence,seed)
-                    print("success!")
-                    
+                    print("---> Success!")
+                    rewrite_print("---> Success!")
                 except IOError:
-                    print("error:",MAX_K,PATH)
-                    pass
-            rewrite_print(os.path.join(root, name))
+                    print("---> Error:", MAX_K, PATH)
+                    rewrite_print("---> Error:", MAX_K, PATH)
 
-## Override the print function to save output information to the file
-# Save the original print function
-rewrite_print = print
-# Define a new print function
-def print(*arg, end=None):
+
+# Định nghĩa lại hàm print, ghi ra file thay vì in console
+rewrite_print = print # Lưu lại hàm print gốc
+def print(*arg, end = None):
     global SAVE_DIR
     file_path = SAVE_DIR + f'/attack_select_{select_mode}_{select_method}20_{MODE}_n{SHADOW_NUM}_s{SEED}_running.log'
     if end == None:
         rewrite_print(*arg, file=open(file_path, "a", encoding="utf-8"))
     else:
         rewrite_print(*arg, end='', file=open(file_path, "a", encoding="utf-8"))
+
 
 if __name__ == "__main__":
     main(sys.argv)

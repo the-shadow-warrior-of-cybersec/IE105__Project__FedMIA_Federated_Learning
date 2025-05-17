@@ -12,17 +12,13 @@ from torch.utils.data import DataLoader
 import torch.multiprocessing as mp
 import time
 import torch.optim as optim
-
 import torch.nn as nn
 import torch.nn.functional as F
 import models as models
-
 from opacus import PrivacyEngine
 from experiments.base import Experiment
 from experiments.trainer_private import TrainerPrivate, TesterPrivate
 from experiments.utils import quant
-
-
 import warnings
 
 
@@ -31,10 +27,9 @@ class FederatedLearning(Experiment):
     Perform federated learning
     """
     def __init__(self, args):
-        super().__init__(args) # define many self attributes from args
-        self.watch_train_client_id=0
-        self.watch_val_client_id=1
-
+        super().__init__(args) # Khởi tạo các tham số cho lớp FederatedLearning
+        self.watch_train_client_id = 0
+        self.watch_val_client_id = 1
         self.criterion = torch.nn.CrossEntropyLoss()
         self.in_channels = 3
         self.optim=args.optim
@@ -45,36 +40,42 @@ class FederatedLearning(Experiment):
         self.sigma_sgd = args.sigma_sgd
         self.grad_norm=args.grad_norm
         self.save_dir = args.save_dir
+
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
         self.data_root = args.data_root
  
         print('==> Preparing data...\n')
+
         self.train_set, self.test_set, self.train_set_mia, self.test_set_mia, self.dict_users, self.train_idxs, self.val_idxs = get_data(dataset=self.dataset,
-                                                        data_root = self.data_root,
-                                                        iid = self.iid,
-                                                        num_users = self.num_users,
-                                                        data_aug=self.args.data_augment,
-                                                        noniid_beta=self.args.beta
-                                                        )
+                                    data_root = self.data_root,
+                                    iid = self.iid,
+                                    num_users = self.num_users,
+                                    data_aug=self.args.data_augment,
+                                    noniid_beta=self.args.beta
+                                    )
 
         print()
         print("Train & Test set length: ", len(self.train_set), len(self.test_set))
         print("Train idxs[0] & Train idxs[1]: ", len(self.train_idxs[0]), len(self.train_idxs[1]))
+        
         if self.args.dataset == 'cifar10':
             self.num_classes = 10
         elif self.args.dataset == 'cifar100':
             self.num_classes = 100
         elif self.args.dataset == 'dermnet':
             self.num_classes = 23
+        elif self.args.dataset == 'cicmaldroid':
+            self.num_classes = 5
+        else:
+            raise ValueError('---> Unknown dataset: {}'.format(self.args.dataset))
      
         self.MIA_trainset_dir=[]
         self.MIA_valset_dir=[]
         self.MIA_trainset_dir_cos=[]
         self.MIA_valset_dir_cos=[]
         self.train_idxs_cos=[]
-        self.testset_idx=(50000+np.arange(10000)).astype(int) # The last 10,000 samples are used as the test set
-        # self.testset_idx_cos=(50000+np.arange(1000)).astype(int)
+        self.testset_idx=(50000 + np.arange(10000)).astype(int)
 
         print()
         print('==> Preparing model...')
@@ -94,16 +95,24 @@ class FederatedLearning(Experiment):
 
         self.w_t = copy.deepcopy(self.model.state_dict())
 
-        self.trainer = TrainerPrivate(self.model, self.train_set, self.device, self.dp, self.sigma,self.num_classes, self.defense,args.klam,args.up_bound,args.mix_alpha)
+        self.trainer = TrainerPrivate(
+                                self.model, 
+                                self.train_set, 
+                                self.device, 
+                                self.dp, 
+                                self.sigma,
+                                self.num_classes, 
+                                self.defense,
+                                args.klam,
+                                args.up_bound,
+                                args.mix_alpha
+                                )
+        
         self.tester = TesterPrivate(self.model, self.device)
               
     def construct_model(self):
-
-        model = models.__dict__[self.args.model_name](num_classes=self.num_classes)
-
-        #model = torch.nn.DataParallel(model)
+        model = models.__dict__[self.args.model_name] (num_classes = self.num_classes)
         self.model = model.to(self.device)
-        
         torch.backends.cudnn.benchmark = True
         print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
 
@@ -112,17 +121,15 @@ class FederatedLearning(Experiment):
         val_ldr = DataLoader(self.test_set, batch_size=self.batch_size , shuffle=False, num_workers=2)
         test_ldr = DataLoader(self.test_set, batch_size=self.batch_size , shuffle=False, num_workers=2)
 
+
         local_train_ldrs = []
         if args.iid:
             for i in range(self.num_users):
-                if args.defense=='instahide':
+                if args.defense == 'instahide':
                     self.batch_size=len(self.dict_users[i])
-                    # print("batch_size:",self.batch_size) 5000
-                local_train_ldr = DataLoader(DatasetSplit(self.train_set, self.dict_users[i]), batch_size = self.batch_size,
-                                                shuffle=True, num_workers=2)
-                # print("len:",len(local_train_ldr)) 1
+    
+                local_train_ldr = DataLoader(DatasetSplit(self.train_set, self.dict_users[i]), batch_size = self.batch_size,shuffle=True, num_workers=2)
                 local_train_ldrs.append(local_train_ldr)
-
         else: 
             for i in range(self.num_users):
                 local_train_ldr = DataLoader(self.dict_users[i], batch_size = self.batch_size,
@@ -133,25 +140,21 @@ class FederatedLearning(Experiment):
         total_time=0
         file_name = "_".join(
                 [ 'a',args.model_name, args.dataset,str(args.num_users),str(args.optim), str(args.lr_up), str(args.batch_size),  str(time.strftime("%Y_%m_%d_%H%M%S", time.localtime()))])
-
-        b=os.path.join(os.getcwd(), self.save_dir)
-        if not os.path.exists(b):
-            os.makedirs(b)
-        fn=b+'/'+file_name+'.log'
-        fn=file_name+'.log'
-        fn=os.path.join(b,fn)
-        print()
-        print("Training log saved in:",fn)
+        save_dir = os.path.join(os.getcwd(), self.save_dir)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        fn = os.path.join(save_dir, file_name + '.log')
+        print("Training log saved in:", fn)
         print()
 
         warnings.filterwarnings("ignore", message="Secure RNG turned off*")
         warnings.filterwarnings("ignore", message="Using a non-full backward*")
 
-        lr_0=self.lr
+        lr_0 = self.lr
 
         for epoch in range(self.epochs):
 
-            global_state_dict=copy.deepcopy(self.model.state_dict())
+            global_state_dict = copy.deepcopy(self.model.state_dict())
 
             if self.sampling_type == 'uniform':
                 self.m = max(int(self.frac * self.num_users), 1)
@@ -285,17 +288,19 @@ class FederatedLearning(Experiment):
                         os.makedirs(os.path.join(os.getcwd(), self.save_dir))
                         print('MIA Score Saved in:', os.path.join(os.getcwd(), self.save_dir))
                     torch.save(save_dict, os.path.join(os.getcwd(), self.save_dir, f'client_{idx}_losses_epoch{epoch+1}.pkl'))
+            
             if self.optim=="sgd":
-                if self.args.lr_up=='common':
+                if self.args.lr_up == 'common':
                     self.lr = self.lr * 0.99
-                elif self.args.lr_up =='milestone':
+                elif self.args.lr_up == 'milestone':
                     if epoch in self.args.schedule_milestone:
                         self.lr *= 0.1
                 else:
                     self.lr=lr_0 * (1 + math.cos(math.pi * epoch/ self.args.epochs)) / 2 
             else:
+                # Chưa làm :)) 
                 pass
-
+                
             client_weights = []
             for i in range(self.num_users):
                 client_weight = len(DatasetSplit(self.train_set, self.dict_users[i]))/len(self.train_set)
@@ -305,7 +310,7 @@ class FederatedLearning(Experiment):
             self.model.load_state_dict(self.w_t)
             end = time.time()
             interval_time = end - start
-            total_time+=interval_time
+            total_time += interval_time
 
             if (epoch + 1) == self.epochs or (epoch + 1) % 1 == 0:
                 loss_train_mean, acc_train_mean = self.trainer.test(train_ldr)
@@ -318,37 +323,34 @@ class FederatedLearning(Experiment):
                 self.logs['val_loss'].append(loss_val_mean)
                 self.logs['local_loss'].append(np.mean(local_losses))
 
-                # use validation set as test set
                 if self.logs['best_test_acc'] < acc_val_mean:
                     self.logs['best_test_acc'] = acc_val_mean
                     self.logs['best_test_loss'] = loss_val_mean
                     self.logs['best_model'] = copy.deepcopy(self.model.state_dict())
 
-                print('---> Epoch {}/{}  --- Time {:.1f}'.format(
-                    epoch, self.epochs,
-                    interval_time
-                )
-                )
+                print('---> Epoch {}/{}  --- Time {:.1f}'.format(epoch + 1, self.epochs, interval_time))
 
                 print(
                     "---> Training Loss {:.4f} --- Validation Loss {:.4f}"
                     .format(loss_train_mean, loss_val_mean))
+                
                 print(
                     "---> Training Accuracy {:.4f} --- Validation Accuracy {:.4f} --- Best Accuracy {:.4f}"
                     .format(acc_train_mean, acc_val_mean, self.logs['best_test_acc'])
                     )
-                s = 'epoch:{}, lr:{:.5f}, val_acc:{:.4f}, val_loss:{:.4f}, tarin_acc:{:.4f}, train_loss:{:.4f},time:{:.4f}, total_time:{:.4f}'.format(epoch,self.lr,acc_val_mean,loss_val_mean,acc_train_mean,loss_train_mean,interval_time,total_time)
                 
-                with open(fn,"a") as f:
-                    json.dump({"epoch":epoch,"lr":round(self.lr,5),"train_acc":round(acc_train_mean,4  ),"test_acc":round(acc_val_mean,4),"time":round(total_time,2)},f)
+                with open(fn, "a") as f:
+                    json.dump(
+                        {"epoch": epoch, "lr": round(self.lr, 5), "train_acc": round(acc_train_mean, 4),
+                         "test_acc": round(acc_val_mean,4), "time":round(total_time,2)}
+                        , f)
                     f.write('\n')
 
-        print('---> Test Loss: {:.4f} --- Test Accuracy: {:.4f}  '.format(self.logs['best_test_loss'], self.logs['best_test_acc']))
+        print('\n========> Test Loss: {:.4f} --- Test Accuracy: {:.4f}  '.format(self.logs['best_test_loss'], self.logs['best_test_acc']))
 
         return self.logs, interval_time, self.logs['best_test_acc'], acc_test_mean
 
     def _fed_avg(self, local_ws, client_weights, lr_outer):
-
         w_avg = copy.deepcopy(local_ws[0])
         for k in w_avg.keys():
             w_avg[k] = w_avg[k] * client_weights[0]
@@ -368,7 +370,7 @@ def get_loss_distributions(idx, MIA_trainset_dir,MIA_testloader, MIA_valset_dir,
         val_res = get_all_losses(MIA_valset_dir[idx], model, crossentropy_noreduce, device)
         return train_res,test_res,val_res
 
-def get_all_losses(dataloader, model, criterion, device,req_logits=False):
+def get_all_losses(dataloader, model, criterion, device, req_logits = False):
     model.eval()
     losses = []
     logits = []
@@ -417,7 +419,6 @@ def get_all_losses_from_indexes(dataset,indexes, model):
 def get_all_cos(cos_model, initial_loader, test_dataloader, test_set, train_set, train_idxs, val_idxs, mix_idxs, needed_test_indexs, model_grads, lr, optim_choice): 
     device = torch.device("cuda")
     if optim_choice=="sgd":
-        
         optimizer = optim.SGD(cos_model.parameters(),
                             lr,
                             momentum=0.9,
@@ -436,12 +437,12 @@ def get_all_cos(cos_model, initial_loader, test_dataloader, test_set, train_set,
         max_grad_norm=1e10,
     )
  
-    tarin_dataloader=DataLoader(DatasetSplit(train_set, train_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
-    # val_dataloader=DataLoader(DatasetSplit(train_set, val_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
-    test_dataloader=DataLoader(DatasetSplit(test_set, needed_test_indexs), batch_size=10 , shuffle=False, num_workers=4)
-    mix_dataloader=DataLoader(DatasetSplit(train_set, mix_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
+    train_dataloader = DataLoader(DatasetSplit(train_set, train_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
+    # val_dataloader = DataLoader(DatasetSplit(train_set, val_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
+    test_dataloader = DataLoader(DatasetSplit(test_set, needed_test_indexs), batch_size=10 , shuffle=False, num_workers=4)
+    mix_dataloader = DataLoader(DatasetSplit(train_set, mix_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
     
-    train_cos, train_diffs,train_norm=get_cos_score(tarin_dataloader,optimizer,cos_model,device,model_grads)
+    train_cos, train_diffs,train_norm=get_cos_score(train_dataloader,optimizer,cos_model,device,model_grads)
     # val_cos,val_diffs,val_norm=get_cos_score(val_dataloader,optimizer,cos_model,device,model_grads)
     test_cos, test_diffs,test_norm=get_cos_score(test_dataloader,optimizer,cos_model,device,model_grads)
     mix_cos, mix_diffs,mix_norm =get_cos_score(mix_dataloader,optimizer,cos_model,device,model_grads)
@@ -526,10 +527,11 @@ def main(args):
     return
 
 def setup_seed(seed):
-     torch.manual_seed(seed)
-     torch.cuda.manual_seed_all(seed)
-     np.random.seed(seed)
-     random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+
 
 if __name__ == '__main__':
     args = parser_args()
