@@ -524,12 +524,19 @@ def setup_seed(seed):
 
 if __name__ == '__main__':
     args = parser_args()
+    print("-------------------- Các tham số --------------------\n")
     print(args)
+    print()
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     setup_seed(args.seed)
 
     args.save_dir=args.save_dir+'/'+f"{args.dataset}_K{args.num_users}_N{args.samples_per_user}_{args.model_name}_def{args.defense}_iid${args.iid}_${args.beta}_${args.optim}_local{args.local_ep}_s{args.seed}"
-    print("scores saved in:",os.path.join(os.getcwd(), args.save_dir))
+
+    print("-------------------- Nơi lưu trữ --------------------\n")
+    print("---> Scores saved in: ",os.path.join(os.getcwd(), args.save_dir))
+    print()
+    
+    print("-------------------- Quá trình training --------------------\n")
     args.log_folder_name=args.save_dir
     main(args)
