@@ -6,11 +6,16 @@ CIFAR dataset classes that allow customized partition
 from PIL import Image
 import os
 import os.path
+import torch
 import numpy as np
 import pickle
+from torch.utils.data import Dataset
+import pandas as pd
+import io
 
 from torchvision.datasets import VisionDataset
 from torchvision.datasets.utils import check_integrity, download_and_extract_archive
+
 
 
 class CIFAR10(VisionDataset):
@@ -142,3 +147,59 @@ class CIFAR100(CIFAR10):
     }
 
 
+class CICMalDroidDataset(Dataset):
+    def __init__(self, csv_file, transform=None, target_transform=None, mode="multiclass"):
+        """
+        Args:
+            csv_file (string): Đường dẫn tới file CSV chứa feature vectors.
+            transform (callable, optional): Hàm transform sẽ được áp dụng lên features.
+            target_transform (callable, optional): Hàm transform sẽ được áp dụng lên nhãn.
+            mode (str): 'multiclass' để sử dụng 5 lớp, hoặc 'binary' để phân loại độc hại/lành tính.
+        """
+        # Đọc file và loại bỏ các dòng bắt đầu bằng "//"
+        with open(csv_file, "r") as f:
+            lines = f.readlines()
+        filtered_lines = [line for line in lines if not line.lstrip().startswith("//")]
+        self.dataframe = pd.read_csv(io.StringIO("".join(filtered_lines)))
+        self.transform = transform
+        self.target_transform = target_transform
+        self.mode = mode
+
+        # Giả sử cột "Class" chứa nhãn (có thể là dạng chuỗi) và các cột khác là đặc trưng
+        if "Class" not in self.dataframe.columns:
+            raise ValueError("Không tìm thấy cột 'Class' trong file CSV!")
+
+        # Nhãn gốc dùng cho bài toán phân loại 5 lớp
+        self.labels = self.dataframe["Class"]
+
+        # Nếu bạn muốn thực hiện bài toán phân loại nhị phân:
+        # Giả sử rằng chỉ nhãn 'Benign' được xem là lành tính, mọi nhãn khác là độc hại.
+        if mode == "binary":
+            self.labels = self.labels.apply(lambda x: 0 if x.strip().lower() == "benign" else 1)
+        else:
+            # Tiến hành mapping các lớp thành chỉ số số nguyên (ví dụ, sắp xếp theo thứ tự xuất hiện)
+            unique_labels = self.labels.unique()
+            self.label_map = {label: idx for idx, label in enumerate(sorted(unique_labels))}
+            self.labels = self.labels.map(self.label_map)
+
+        # Đặc trưng là tất cả các cột trừ cột "Class"
+        self.features = self.dataframe.drop(columns=["Class"]).values.astype(float)
+
+    def __len__(self):
+        return len(self.features)
+
+    def __getitem__(self, index):
+        # Lấy vector đặc trưng và nhãn tại index chỉ định
+        feature = self.features[index]
+        label = self.labels.iloc[index] if isinstance(self.labels, pd.Series) else self.labels[index]
+
+        # Chuyển đổi vector đặc trưng thành tensor float
+        sample = torch.tensor(feature, dtype=torch.float32)
+
+        if self.transform:
+            sample = self.transform(sample)
+
+        if self.target_transform:
+            label = self.target_transform(label)
+
+        return sample, label

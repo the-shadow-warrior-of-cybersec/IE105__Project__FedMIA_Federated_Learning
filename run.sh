@@ -1,9 +1,9 @@
 # Thiết lập các siêu tham số và cấu hình
-dataset=cifar100 # cifar100 hoặc dermnet
-model_name=alexnet # alexnet hoặc ResNet18
+dataset=cicmaldroid # cifar100 hoặc dermnet hoặc cicmaldroid
+model_name=mlp # alexnet hoặc ResNet18 hoặc mlp
 opt=sgd
 seed=2025
-lr=0.1
+lr=0.01
 local_epoch=1
 
 # In menu

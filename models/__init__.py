@@ -5,3 +5,4 @@ from .densenet import *
 from .preresnet import *
 from .resnext import *
 from .wrn import *
+from .mlp import *

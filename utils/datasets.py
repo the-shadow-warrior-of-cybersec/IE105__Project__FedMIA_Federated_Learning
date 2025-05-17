@@ -14,6 +14,10 @@ from utils.sampling import *
 from collections import defaultdict
 from torchvision.datasets.folder import pil_loader, make_dataset, IMG_EXTENSIONS
 
+from torch.utils.data import random_split
+from dataset import CICMalDroidDataset
+from utils.sampling import cifar_iid_MIA, cifar_beta  # nếu bạn muốn chia dữ liệu cho federated learning
+
 def setup_seed(seed):
      torch.manual_seed(seed)
      torch.cuda.manual_seed_all(seed)
@@ -116,6 +120,7 @@ def get_data(dataset, data_root, iid, num_users,data_aug, noniid_beta):
                                                 download=False,
                                                 transform=transform_test
                                                 )
+    
     if ds == 'dermnet':
         data=torch.load(data_root+"/dermnet_ts.pt")
 
@@ -130,6 +135,7 @@ def get_data(dataset, data_root, iid, num_users,data_aug, noniid_beta):
         test_set=torch.utils.data.TensorDataset(total_set[0][-4000:],total_set[1][-4000:] )
         train_set_mia = train_set
         test_set_mia = test_set
+    
     if ds == 'oct':
         data=torch.load(data_root+"/oct_ts.pt")
         total_set=[torch.cat([data[0][0],data[1][0]]),torch.cat([data[0][1],data[1][1]])  ]
@@ -140,10 +146,43 @@ def get_data(dataset, data_root, iid, num_users,data_aug, noniid_beta):
         train_set=torch.utils.data.TensorDataset(total_set[0][0:20000],total_set[1][0:20000] )
         test_set=torch.utils.data.TensorDataset(total_set[0][-2000:],total_set[1][-2000:] )
 
+    if ds == 'cicmaldroid':
+        # Đường dẫn file CSV (đảm bảo data_root trỏ tới thư mục chứa _maldroid_dataset)
+        csv_path = os.path.join(data_root, "maldroid-2022/feature_vectors_syscalls_frequency_5_Cat.csv")
+        # Nếu cần, bạn có thể xác định transform cho tensor (ví dụ, normalize)
+        transform = transforms.Lambda(lambda x: (x - x.mean()) / (x.std() + 1e-5))
+        
+        # Tạo đối tượng dataset. Bạn có thể chọn mode 'multiclass' hoặc 'binary'
+        full_set = CICMalDroidDataset(csv_file=csv_path, transform=transform, mode="multiclass")
+        
+        # Tách tập dữ liệu thành train và test (ví dụ: 80% train, 20% test)
+        total_size = len(full_set)
+        train_size = int(0.8 * total_size)
+        test_size = total_size - train_size
+        train_set, test_set = random_split(full_set, [train_size, test_size])
+        
+        # Nếu bạn áp dụng phân phối dữ liệu theo federated learning, dùng hàm phân phối như cifar_iid_MIA hay cifar_beta
+        if iid:
+            dict_users, train_idxs, val_idxs = cifar_iid_MIA(train_set, num_users)
+        else:
+            dict_users, train_idxs, val_idxs = cifar_beta(train_set, noniid_beta, num_users)
+            
+        # Trong trường hợp bạn không thực hiện thí nghiệm cho attack/MIA, có thể gán train_set_mia = train_set, test_set_mia = test_set
+        train_set_mia = train_set
+        test_set_mia = test_set
+        
+        return train_set, test_set, train_set_mia, test_set_mia, dict_users, train_idxs, val_idxs
+
     if iid:
         dict_users, train_idxs, val_idxs = cifar_iid_MIA(train_set, num_users)
     else:
         dict_users, train_idxs, val_idxs = cifar_beta(train_set, noniid_beta, num_users)
+
+    # these dataloader would only be used in calculating accuracy and loss
+    test_loader = DataLoader(full_set, batch_size=10, shuffle=True)
+    for x, y in test_loader:
+        print("Batch features mean:", x.mean().item(), "std:", x.std().item())
+        break
 
     return train_set, test_set, train_set_mia, test_set_mia, dict_users, train_idxs, val_idxs
 

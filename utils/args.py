@@ -66,7 +66,7 @@ def parser_args():
                         help='cosine_attack')
     
     # ============================ Model arguments ===================================
-    parser.add_argument('--model_name', type=str, default='alexnet', choices=['alexnet','ResNet18'],
+    parser.add_argument('--model_name', type=str, default='alexnet', choices=['alexnet','ResNet18','mlp'],
                         help='model architecture name')
     
     parser.add_argument('--dataset', type=str, default='cifar100', help="name of dataset")

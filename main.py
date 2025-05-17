@@ -108,7 +108,6 @@ class FederatedLearning(Experiment):
         print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
 
     def train(self):
-        # these dataloader would only be used in calculating accuracy and loss
         train_ldr = DataLoader(self.train_set, batch_size=self.batch_size, shuffle=False, num_workers=2)
         val_ldr = DataLoader(self.test_set, batch_size=self.batch_size , shuffle=False, num_workers=2)
         test_ldr = DataLoader(self.test_set, batch_size=self.batch_size , shuffle=False, num_workers=2)
@@ -236,6 +235,9 @@ class FederatedLearning(Experiment):
                         data_num = 300
                         needed_test_indexs = None
                         # print('needed_test_indexs:',len(needed_test_indexs))
+                    elif self.args.dataset == 'cicmaldroid':
+                        data_num = int(len(self.test_set) / self.num_users)
+                    
                     for c_id in range(1,self.num_users):
                         mixed_indexs.extend(random.sample(list(self.train_idxs[c_id]), data_num))
                     # print('len(mixed_indexs):', len(mixed_indexs))

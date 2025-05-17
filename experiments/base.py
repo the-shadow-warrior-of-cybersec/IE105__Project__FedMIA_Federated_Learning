@@ -37,6 +37,9 @@ class Experiment(object):
             self.num_classes = 10
         if args.dataset == 'cifar100':
             self.num_classes = 100
+        if args.dataset == 'cicmaldroid':
+            self.num_classes = 5
+        
         ## federated learning args
         self.frac = args.frac
         self.data_root = args.data_root
