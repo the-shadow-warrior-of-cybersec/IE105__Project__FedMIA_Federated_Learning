@@ -23,6 +23,9 @@ from experiments.trainer_private import TrainerPrivate, TesterPrivate
 from experiments.utils import quant
 
 
+import warnings
+
+
 class FederatedLearning(Experiment):
     """
     Perform federated learning
@@ -46,7 +49,7 @@ class FederatedLearning(Experiment):
             os.makedirs(self.save_dir)
         self.data_root = args.data_root
  
-        print('==> Preparing data...')
+        print('==> Preparing data...\n')
         self.train_set, self.test_set, self.train_set_mia, self.test_set_mia, self.dict_users, self.train_idxs, self.val_idxs = get_data(dataset=self.dataset,
                                                         data_root = self.data_root,
                                                         iid = self.iid,
@@ -55,8 +58,9 @@ class FederatedLearning(Experiment):
                                                         noniid_beta=self.args.beta
                                                         )
 
-        print(len(self.train_set), len(self.test_set))
-        print(len(self.train_idxs[0]), len(self.train_idxs[1]))
+        print()
+        print("Train & Test set length: ", len(self.train_set), len(self.test_set))
+        print("Train idxs[0] & Train idxs[1]: ", len(self.train_idxs[0]), len(self.train_idxs[1]))
         if self.args.dataset == 'cifar10':
             self.num_classes = 10
         elif self.args.dataset == 'cifar100':
@@ -72,7 +76,9 @@ class FederatedLearning(Experiment):
         self.testset_idx=(50000+np.arange(10000)).astype(int) # The last 10,000 samples are used as the test set
         # self.testset_idx_cos=(50000+np.arange(1000)).astype(int)
 
+        print()
         print('==> Preparing model...')
+        print()
 
         self.logs = {'train_acc': [], 'train_sign_acc':[], 'train_loss': [],
                      'val_acc': [], 'val_loss': [],
@@ -85,7 +91,7 @@ class FederatedLearning(Experiment):
                      }
 
         self.construct_model()
-        
+
         self.w_t = copy.deepcopy(self.model.state_dict())
 
         self.trainer = TrainerPrivate(self.model, self.train_set, self.device, self.dp, self.sigma,self.num_classes, self.defense,args.klam,args.up_bound,args.mix_alpha)
@@ -135,7 +141,12 @@ class FederatedLearning(Experiment):
         fn=b+'/'+file_name+'.log'
         fn=file_name+'.log'
         fn=os.path.join(b,fn)
-        print("training log saved in:",fn)
+        print()
+        print("Training log saved in:",fn)
+        print()
+
+        warnings.filterwarnings("ignore", message="Secure RNG turned off*")
+        warnings.filterwarnings("ignore", message="Using a non-full backward*")
 
         lr_0=self.lr
 
@@ -150,7 +161,7 @@ class FederatedLearning(Experiment):
             local_ws, local_losses,= [], []
 
             start = time.time()
-            for idx in tqdm(idxs_users, desc='Epoch:%d, lr:%f' % (self.epochs, self.lr)):
+            for idx in tqdm(idxs_users, desc='<---------- + ----------> Epoch: %d, lr: %f' % (self.epochs, self.lr)):
 
                 self.model.load_state_dict(global_state_dict)
 
@@ -311,19 +322,18 @@ class FederatedLearning(Experiment):
                     self.logs['best_test_loss'] = loss_val_mean
                     self.logs['best_model'] = copy.deepcopy(self.model.state_dict())
 
-                print('Epoch {}/{}  --time {:.1f}'.format(
+                print('---> Epoch {}/{}  --- Time {:.1f}'.format(
                     epoch, self.epochs,
                     interval_time
                 )
                 )
 
                 print(
-                    "Train Loss {:.4f} --- Val Loss {:.4f}"
+                    "---> Training Loss {:.4f} --- Validation Loss {:.4f}"
                     .format(loss_train_mean, loss_val_mean))
-                print("Train acc {:.4f} --- Val acc {:.4f} --Best acc {:.4f}".format(acc_train_mean, acc_val_mean,
-                                                                                                        self.logs[
-                                                                                                            'best_test_acc']
-                                                                                                        )
+                print(
+                    "---> Training Accuracy {:.4f} --- Validation Accuracy {:.4f} --- Best Accuracy {:.4f}"
+                    .format(acc_train_mean, acc_val_mean, self.logs['best_test_acc'])
                     )
                 s = 'epoch:{}, lr:{:.5f}, val_acc:{:.4f}, val_loss:{:.4f}, tarin_acc:{:.4f}, train_loss:{:.4f},time:{:.4f}, total_time:{:.4f}'.format(epoch,self.lr,acc_val_mean,loss_val_mean,acc_train_mean,loss_train_mean,interval_time,total_time)
                 
@@ -331,10 +341,7 @@ class FederatedLearning(Experiment):
                     json.dump({"epoch":epoch,"lr":round(self.lr,5),"train_acc":round(acc_train_mean,4  ),"test_acc":round(acc_val_mean,4),"time":round(total_time,2)},f)
                     f.write('\n')
 
-        print('------------------------------------------------------------------------')
-        print('Test loss: {:.4f} --- Test acc: {:.4f}  '.format(self.logs['best_test_loss'], 
-                                                                                       self.logs['best_test_acc']
-                                                                                       ))
+        print('---> Test Loss: {:.4f} --- Test Accuracy: {:.4f}  '.format(self.logs['best_test_loss'], self.logs['best_test_acc']))
 
         return self.logs, interval_time, self.logs['best_test_acc'], acc_test_mean
 

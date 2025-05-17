@@ -14,6 +14,7 @@ import math
 import random
 
 import warnings
+
 warnings.filterwarnings('ignore')
 
 def liratio(mu_in,mu_out,var_in,var_out,new_samples):
@@ -818,7 +819,7 @@ def main(argv):
     
     for root, dirs, files in os.walk(p_folder, topdown=False):
         for name in dirs:
-            if  root!=p_folder:#or 's1' not in name or model not in name: #or 's5' not in name:
+            if  root != p_folder: #or 's1' not in name or model not in name: #or 's5' not in name:
                 continue
             else: 
                 PATH=os.path.join(root, name)
