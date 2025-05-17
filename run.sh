@@ -1,10 +1,11 @@
 # Thiết lập các siêu tham số và cấu hình
-dataset=cicmaldroid # cifar100 hoặc dermnet hoặc cicmaldroid
-model_name=mlp # alexnet hoặc ResNet18 hoặc mlp
+dataset=cicmaldroid # cifar100/ dermnet/ cicmaldroid
+model_name=mlp # alexnet/ ResNet18/ mlp
 opt=sgd
 seed=2025
 lr=0.01
 local_epoch=1
+
 
 # In menu
 clear
@@ -18,7 +19,6 @@ read -p "---> Nhập lựa chọn của bạn (1/2): " choice
 echo
 
 
-
 # Logic chính
 if [ "$choice" = "1" ]; then
     # iid experiment
@@ -27,7 +27,7 @@ if [ "$choice" = "1" ]; then
     echo "#################### Thử nghiệm IID ####################"
     echo
     CUDA_VISIBLE_DEVICES=0 python main.py --seed $seed --num_users 10 --iid 1 \
-     --dataset $dataset --model_name $model_name --epochs 100 --local_ep $local_epoch \
+     --dataset $dataset --model_name $model_name --epochs 25 --local_ep $local_epoch \
      --lr $lr --batch_size 64 --optim $opt --save_dir $save_dir --log_folder_name $save_dir \
      --lr_up cosine --MIA_mode 1 --gpu 0 2>&1 | tee "${save_dir}/raw_logs"
 elif [ "$choice" = "2" ]; then
@@ -37,7 +37,7 @@ elif [ "$choice" = "2" ]; then
     echo "#################### Thử nghiệm Non-IID ####################"
     echo
     CUDA_VISIBLE_DEVICES=0 python main.py --seed $seed --num_users 10 --iid 0 --beta 1.0 \
-     --dataset $dataset --model_name $model_name --epochs 100 --local_ep $local_epoch \
+     --dataset $dataset --model_name $model_name --epochs 25 --local_ep $local_epoch \
      --lr $lr --batch_size 64 --optim $opt --save_dir $save_dir --log_folder_name $save_dir \
      --lr_up cosine --MIA_mode 1 --gpu 0 2>&1 | tee "${save_dir}/raw_logs"
 else

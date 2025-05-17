@@ -155,12 +155,19 @@ def get_data(dataset, data_root, iid, num_users,data_aug, noniid_beta):
         # Tạo đối tượng dataset. Bạn có thể chọn mode 'multiclass' hoặc 'binary'
         full_set = CICMalDroidDataset(csv_file=csv_path, transform=transform, mode="multiclass")
         
-        # Tách tập dữ liệu thành train và test (ví dụ: 80% train, 20% test)
         total_size = len(full_set)
+        # Tạo danh sách chỉ số từ 0 đến total_size-1
+        all_indices = list(range(total_size))
+        # Tách theo tỷ lệ 80% train, 20% test (có thể xáo trộn nếu muốn)
+        random.shuffle(all_indices)
         train_size = int(0.8 * total_size)
-        test_size = total_size - train_size
-        train_set, test_set = random_split(full_set, [train_size, test_size])
+        train_indices = all_indices[:train_size]
+        test_indices = all_indices[train_size:]
         
+        # Sử dụng DatasetSplit để tạo tập con
+        train_set = DatasetSplit(full_set, train_indices)
+        test_set = DatasetSplit(full_set, test_indices)
+            
         # Nếu bạn áp dụng phân phối dữ liệu theo federated learning, dùng hàm phân phối như cifar_iid_MIA hay cifar_beta
         if iid:
             dict_users, train_idxs, val_idxs = cifar_iid_MIA(train_set, num_users)
@@ -187,9 +194,15 @@ def get_data(dataset, data_root, iid, num_users,data_aug, noniid_beta):
     return train_set, test_set, train_set_mia, test_set_mia, dict_users, train_idxs, val_idxs
 
 class DatasetSplit(Dataset):
+
     def __init__(self, dataset, idxs):
-        self.dataset = dataset
-        self.idxs = list(idxs)
+        if isinstance(dataset, DatasetSplit):
+            # Nếu dataset đã là DatasetSplit, unwrap và sử dụng idxs được truyền vào trực tiếp
+            self.dataset = dataset.dataset
+            self.idxs = list(idxs)
+        else:
+            self.dataset = dataset
+            self.idxs = list(idxs)
 
     def __len__(self):
         return len(self.idxs)

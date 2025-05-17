@@ -176,11 +176,15 @@ class CICMalDroidDataset(Dataset):
         # Giả sử rằng chỉ nhãn 'Benign' được xem là lành tính, mọi nhãn khác là độc hại.
         if mode == "binary":
             self.labels = self.labels.apply(lambda x: 0 if x.strip().lower() == "benign" else 1)
+            self.classes = ["Benign", "Malicious"]
         else:
             # Tiến hành mapping các lớp thành chỉ số số nguyên (ví dụ, sắp xếp theo thứ tự xuất hiện)
             unique_labels = self.labels.unique()
             self.label_map = {label: idx for idx, label in enumerate(sorted(unique_labels))}
             self.labels = self.labels.map(self.label_map)
+            self.classes = unique_labels
+
+        self.targets = self.labels.values
 
         # Đặc trưng là tất cả các cột trừ cột "Class"
         self.features = self.dataframe.drop(columns=["Class"]).values.astype(float)
