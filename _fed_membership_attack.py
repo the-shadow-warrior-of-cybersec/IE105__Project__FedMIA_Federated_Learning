@@ -82,8 +82,8 @@ def plot_auc(name, target_val_score, target_train_score, epoch):
 
 def common_attack(f, K, epch, extract_fn = None):
 
-    accs=[]
-    target_res=torch.load(f.format(0,epch))
+    accs = []
+    target_res = torch.load(f.format(0,epch))
 
     # target_train_loss=hinge_loss_fn(target_res["train_res"]["logit"] , target_res["train_res"]["labels"] )
     # target_test_loss=hinge_loss_fn(target_res["test_res"]["logit"] , target_res["test_res"]["labels"] )
