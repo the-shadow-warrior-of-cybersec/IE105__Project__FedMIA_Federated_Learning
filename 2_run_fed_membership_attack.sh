@@ -19,6 +19,13 @@ if ! [[ "$total_epoch" =~ ^[0-9]+$ ]]; then
 fi
 echo
 
+read -p "Nhập chế độ tấn công (train/val/test/mix): " attack_mode
+if [[ "$attack_mode" != "train" && "$attack_mode" != "val" && "$attack_mode" != "test" && "$attack_mode" != "mix" ]]; then
+    echo "Lỗi: Chế độ tấn công không tồn tại!"
+    exit 1
+fi
+echo
+
 read -p "Nhập seed (int): " seed
 if ! [[ "$seed" =~ ^[0-9]+$ ]]; then
     echo "Lỗi: Seed phải là số nguyên!"
@@ -29,8 +36,5 @@ echo
 echo "#################### Attacking... ####################"
 echo
 
-# Lấy index ứng với index GPU của máy
-gpu=0
-
-# Chạy tấn công
-python -u _fed_membership_attack.py  ${path} ${total_epoch} ${gpu} ${seed}  
+gpu_index=0 # Lấy index ứng với index GPU của máy
+python -u _fed_membership_attack.py  ${path} ${total_epoch} ${attack_mode}  ${gpu_index} ${seed}  

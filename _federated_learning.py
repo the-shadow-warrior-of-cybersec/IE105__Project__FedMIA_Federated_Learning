@@ -20,6 +20,7 @@ from experiments.base import Experiment
 from experiments.trainer_private import TrainerPrivate, TesterPrivate
 from experiments.utils import quant
 import warnings
+import json
 
 
 class FederatedLearning(Experiment):
@@ -27,7 +28,7 @@ class FederatedLearning(Experiment):
     Perform federated learning
     """
     def __init__(self, args):
-        super().__init__(args) # Khởi tạo các tham số cho lớp FederatedLearning
+        super().__init__(args) 
         self.watch_train_client_id = 0
         self.watch_val_client_id = 1
         self.criterion = torch.nn.CrossEntropyLoss()
@@ -359,6 +360,13 @@ class FederatedLearning(Experiment):
 
             self.w_t[k] = w_avg[k]
 
+# ========== Các hàm hỗ trợ ==========
+
+def setup_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
 def get_loss_distributions(idx, MIA_trainset_dir,MIA_testloader, MIA_valset_dir, model):
         """ Obtain the member and nonmember loss distributions"""
@@ -489,6 +497,8 @@ def get_cos_score(samples_ldr,optimizer,cos_model,device,model_grads ):
 
     return  torch.tensor(cos_scores).cpu(), torch.tensor(grad_diffs).cpu(), torch.tensor(sample_grads).cpu()
 
+# ========== Main ==========
+
 def main(args):
     logs = {'net_info': None,
             'arguments': {
@@ -524,13 +534,6 @@ def main(args):
                     args.epochs, args.local_ep, args.num_users, time, test_acc
                ))
     return
-
-def setup_seed(seed):
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-
 
 if __name__ == '__main__':
     args = parser_args()
