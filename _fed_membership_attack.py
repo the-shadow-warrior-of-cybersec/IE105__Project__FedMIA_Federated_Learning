@@ -17,144 +17,136 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def liratio(mu_in,mu_out,var_in,var_out,new_samples):
-    #l_in=np.sqrt(var_in)*np.exp(-((new_samples-mu_in)*(new_samples-mu_in))/(2*var_in+1e-3) )
-    #l_out=np.sqrt(var_out)*np.exp(-((new_samples-mu_out)*(new_samples-mu_out))/(2*var_out+1e-3))
-    l_out=scipy.stats.norm.cdf(new_samples,mu_out,np.sqrt(var_out))
+    l_out=scipy.stats.norm.cdf(new_samples, mu_out, np.sqrt(var_out))
     return l_out
 
 @ torch.no_grad()
 def hinge_loss_fn(x,y):
-    x,y=copy.deepcopy(x).cuda(),copy.deepcopy(y).cuda()
-    mask=torch.eye(x.shape[1],device="cuda")[y].bool()
-    tmp1=x[mask]
-    x[mask]=-1e10
-    tmp2=torch.max(x,dim=1)[0]
-    # print(tmp1.shape,tmp2.shape)
-    return (tmp1-tmp2).cpu().numpy()
+    x, y = copy.deepcopy(x).cuda(),copy.deepcopy(y).cuda()
+    mask = torch.eye(x.shape[1],device="cuda")[y].bool()
+    tmp1 = x[mask]
+    x[mask] =- 1e10
+    tmp2 = torch.max(x,dim=1)[0]
+    return (tmp1 - tmp2).cpu().numpy()
 
 def ce_loss_fn(x,y):
     loss_fn=torch.nn.CrossEntropyLoss(reduction='none')
     return loss_fn(x,y)
 
 def extract_hinge_loss(i):
-    val_dict={}
-    val_index=i["val_index"]
-    val_hinge_index=hinge_loss_fn(i["val_res"]["logit"] , i["val_res"]["labels"] )
+    val_dict = {}
+    val_index = i["val_index"]
+    val_hinge_index = hinge_loss_fn(i["val_res"]["logit"] , i["val_res"]["labels"] )
     for j,k in zip(val_index,val_hinge_index):
         if j in val_dict:
             val_dict[j].append(k)
         else:
-            val_dict[j]=[k]
+            val_dict[j] = [k]
 
-    train_dict={}
-    train_index=i["train_index"]
-    train_hinge_index=hinge_loss_fn(i["train_res"]["logit"] , i["train_res"]["labels"] )
-    for j,k in zip(train_index,train_hinge_index):
+    train_dict = {}
+    train_index = i["train_index"]
+    train_hinge_index = hinge_loss_fn(i["train_res"]["logit"] , i["train_res"]["labels"] )
+    for j, k in zip(train_index,train_hinge_index):
         if j in train_dict:
             train_dict[j].append(k)
         else:
-            train_dict[j]=[k]
+            train_dict[j] = [k]
     
-    test_dict={}
-    test_index=i["test_index"]
-    test_hinge_index=hinge_loss_fn(i["test_res"]["logit"] , i["test_res"]["labels"] )
+    test_dict = {}
+    test_index = i["test_index"]
+    test_hinge_index = hinge_loss_fn(i["test_res"]["logit"] , i["test_res"]["labels"] )
     for j,k in zip(test_index,test_hinge_index):
         if j in test_dict:
             test_dict[j].append(k)
         else:
-            test_dict[j]=[k]
+            test_dict[j] = [k]
 
-    return (val_dict,train_dict,test_dict)
+    return (val_dict, train_dict, test_dict)
 
-def plot_auc(name,target_val_score,target_train_score,epoch): 
-    # print('target_val_score.shape:',target_val_score.shape)
-    # indices = random.sample([i for i in range(0,target_val_score.shape[0])], target_train_score.shape[0])
-    # target_val_score = torch.index_select(target_val_score, 0, torch.tensor(indices))
-    # print('after sampling target_val_score.shape:',target_val_score.shape)
-
-
+def plot_auc(name, target_val_score, target_train_score, epoch): 
     fpr, tpr, thresholds = metrics.roc_curve(torch.cat( [torch.zeros_like(target_val_score),torch.ones_like(target_train_score)] ).cpu().numpy(), torch.cat([target_val_score,target_train_score]).cpu().numpy())
-    auc=metrics.auc(fpr, tpr)
-    log_tpr,log_fpr=np.log10(tpr),np.log10(fpr)
-    log_tpr[log_tpr<-5]=-5
-    log_fpr[log_fpr<-5]=-5
-    log_fpr=(log_fpr+5)/5.0
-    log_tpr=(log_tpr+5)/5.0
-    log_auc=metrics.auc( log_fpr,log_tpr )
+    auc = metrics.auc(fpr, tpr)
+    log_tpr, log_fpr = np.log10(tpr), np.log10(fpr)
+    log_tpr[log_tpr < -5] =- 5
+    log_fpr[log_fpr < -5] =- 5
+    log_fpr = (log_fpr+5) / 5.0
+    log_tpr = (log_tpr+5) / 5.0
+    log_auc = metrics.auc(log_fpr,log_tpr)
 
     tprs={}
-    for fpr_thres in [10, 1, 0.1,0.02,0.01,0.001,0.0001]:
-        tpr_index = np.sum(fpr<fpr_thres)
-        tprs[str(fpr_thres)]=tpr[tpr_index-1]
-    return auc,log_auc,tprs
+    for fpr_thres in [10, 1, 0.1, 0.02, 0.01, 0.001, 0.0001]:
+        tpr_index = np.sum(fpr < fpr_thres)
+        tprs[str(fpr_thres)] = tpr[tpr_index-1]
+    
+    return auc, log_auc, tprs
 
-def common_attack(f,K,epch,extract_fn=None):
+def common_attack(f, K, epch, extract_fn = None):
+
     accs=[]
     target_res=torch.load(f.format(0,epch))
 
     # target_train_loss=hinge_loss_fn(target_res["train_res"]["logit"] , target_res["train_res"]["labels"] )
     # target_test_loss=hinge_loss_fn(target_res["test_res"]["logit"] , target_res["test_res"]["labels"] )
     
-    target_train_loss=-ce_loss_fn(target_res["train_res"]["logit"] , target_res["train_res"]["labels"] )
-    if MODE=="test":
-        target_test_loss=-ce_loss_fn(target_res["test_res"]["logit"] , target_res["test_res"]["labels"] )
-    elif MODE=="val":
-        target_test_loss=-ce_loss_fn(target_res["val_res"]["logit"] , target_res["val_res"]["labels"] )
+    target_train_loss =- ce_loss_fn(target_res["train_res"]["logit"], target_res["train_res"]["labels"] )
+    if MODE == "test":
+        target_test_loss =- ce_loss_fn(target_res["test_res"]["logit"], target_res["test_res"]["labels"] )
+    elif MODE == "val":
+        target_test_loss =- ce_loss_fn(target_res["val_res"]["logit"], target_res["val_res"]["labels"] )
 
-    auc,log_auc,tprs=plot_auc("common",torch.tensor(target_test_loss),torch.tensor(target_train_loss),epch)
+    auc, log_auc, tprs = plot_auc("common", torch.tensor(target_test_loss), torch.tensor(target_train_loss),epch)
     print("__"*10,"common")
-    print(f"tprs:{tprs}", log_auc)
-    # print("test_acc:",target_res[taret_idx])
-    print("__"*10,)
+    print(f"---> True positive rates: {tprs}", log_auc)
+    print("__"*10)
 
-    return accs,tprs,auc,log_auc,(target_test_loss,target_train_loss)
+    return accs, tprs, auc, log_auc, (target_test_loss,target_train_loss)
 
-def lira_attack_ldh_cosine(f,epch,K, save_dir, extract_fn=None,attack_mode="cos"):
-    # attack_mode="cos"
-    print('******************************************************')
-    print('************','Epch:',epch,' attack_mode:',attack_mode,'**************')
-    print('******************************************************')
-    save_log=save_dir + '/' + f'attack_sel{select_mode}_{select_method}_{attack_mode}.log'
-    accs=[]
-    training_res=[]
+def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode="cos"):
+
+    print(f'\n==================== Using attack mode {attack_mode} on {epch} number of epochs ====================\n')
+    
+    save_log = save_dir + '/' + f'attack_sel{select_mode}_{select_method}_{attack_mode}.log'
+    accs = []
+    training_res = []
     for i in range(K):
         # print(i,epch)
         # training_res.append(torch.load(f.format(i,epch),map_location=lambda storage, loc: storage))
         training_res.append(torch.load(f.format(i,epch)))
         accs.append(training_res[-1]["test_acc"])
     
-    target_idx=0
+    target_idx = 0
     val_idx = 1
-    target_res=training_res[target_idx]
-    shadow_res=training_res[val_idx:]
-    #print(target_res["tarin_cos"])
-    if attack_mode=="cos":
-        target_train_loss=torch.tensor(target_res["tarin_cos"]).cpu().numpy()
-        if MODE=="test":
-            target_test_loss=torch.tensor(target_res["test_cos"]).cpu().numpy()
-        elif MODE=="val":
-            target_test_loss=torch.tensor(target_res["val_cos"]).cpu().numpy()
-        elif MODE =='mix':
+    target_res = training_res[target_idx]
+    shadow_res = training_res[val_idx:]
+
+    if attack_mode == "cos":
+        target_train_loss = torch.tensor(target_res["tarin_cos"]).cpu().numpy()
+        if MODE == "test":
+            target_test_loss = torch.tensor(target_res["test_cos"]).cpu().numpy()
+        elif MODE == "val":
+            target_test_loss = torch.tensor(target_res["val_cos"]).cpu().numpy()
+        elif MODE == 'mix':
             random_indices = torch.randperm(target_res["test_cos"].shape[0])
             target_test_loss = target_res["test_cos"][random_indices[:mix_length]]
             target_test_loss = torch.tensor(target_test_loss).cpu().numpy()
             mix_test_loss = torch.tensor(target_res["mix_cos"]).cpu().numpy()
             mix_test_loss = np.concatenate([target_test_loss,mix_test_loss],axis=0)
-            print('mix_test_loss shape:',mix_test_loss.shape)
+            print('---> Mix test loss shape: ', mix_test_loss.shape)
             target_test_loss = mix_test_loss
 
-    if attack_mode=="diff":
-        target_train_loss=torch.tensor(target_res["tarin_diffs"]).cpu().numpy()
-        if MODE=="test":
-            target_test_loss=torch.tensor(target_res["test_diffs"]).cpu().numpy()
-        elif MODE=="val":
-            target_test_loss=torch.tensor(target_res["val_diffs"]).cpu().numpy()
-    if attack_mode == 'loss':
+    elif attack_mode == "diff":
+        target_train_loss = torch.tensor(target_res["tarin_diffs"]).cpu().numpy()
+        if MODE == "test":
+            target_test_loss = torch.tensor(target_res["test_diffs"]).cpu().numpy()
+        elif MODE == "val":
+            target_test_loss = torch.tensor(target_res["val_diffs"]).cpu().numpy()
+    
+    elif attack_mode == 'loss':
         target_train_loss = -ce_loss_fn(target_res["train_res"]["logit"] , target_res["train_res"]["labels"] ).cpu().numpy()
-        if MODE=="test":
-            target_test_loss=-ce_loss_fn(target_res["test_res"]["logit"] , target_res["test_res"]["labels"] ).cpu().numpy()
-        elif MODE=="val":
-            target_test_loss=-ce_loss_fn(target_res["val_res"]["logit"] , target_res["val_res"]["labels"] ).cpu().numpy()
+        if MODE == "test":
+            target_test_loss = -ce_loss_fn(target_res["test_res"]["logit"] , target_res["test_res"]["labels"] ).cpu().numpy()
+        elif MODE == "val":
+            target_test_loss =- ce_loss_fn(target_res["val_res"]["logit"] , target_res["val_res"]["labels"] ).cpu().numpy()
         elif MODE == 'mix':
             random_indices = torch.randperm(target_res["test_res"]["logit"].shape[0])
             target_test_loss =-ce_loss_fn(target_res["test_res"]["logit"][random_indices[:mix_length]],\
@@ -162,39 +154,50 @@ def lira_attack_ldh_cosine(f,epch,K, save_dir, extract_fn=None,attack_mode="cos"
             target_test_loss = torch.tensor(target_test_loss).cpu().numpy()
             mix_test_loss=-ce_loss_fn(target_res["mix_res"]["logit"] , target_res["mix_res"]["labels"] ).cpu().numpy()
             mix_test_loss = np.concatenate([target_test_loss,mix_test_loss],axis=0)
-            print('mix_test_loss shape:',mix_test_loss.shape)
+            print('---> Mix test loss shape: ', mix_test_loss.shape)
             target_test_loss = mix_test_loss
 
-    shadow_train_losses=[]
-    shadow_test_losses=[]
-    if attack_mode=="cos":
+    shadow_train_losses = []
+    shadow_test_losses = []
+
+    if attack_mode == "cos":
         for i in shadow_res:
             shadow_train_losses.append( torch.tensor(i["tarin_cos"]).cpu().numpy() )
-            if MODE=="val":
+            if MODE == "val":
                 shadow_test_losses.append(torch.tensor(i["val_cos"]).cpu().numpy() )
-            elif MODE=="test":
+            elif MODE == "test":
                 shadow_test_losses.append(torch.tensor(i["test_cos"]).cpu().numpy() )
-            elif MODE =='mix':
+            elif MODE == 'mix':
                 random_indices = torch.randperm(i["test_cos"].shape[0])
                 shadow_test_loss = i["test_cos"][random_indices[:mix_length]]
                 shadow_test_loss = torch.tensor(shadow_test_loss).cpu().numpy()
                 mix_test_loss = torch.tensor(i["mix_cos"]).cpu().numpy()
                 mix_test_loss = np.concatenate([shadow_test_loss,mix_test_loss],axis=0)
-                print('mix_test_loss shape:',mix_test_loss.shape)
+                print('---> Mix test loss shape: ', mix_test_loss.shape)
                 shadow_test_losses.append(mix_test_loss)
-    elif attack_mode=="diff":
+
+    elif attack_mode == "diff":
         for i in shadow_res:
             shadow_train_losses.append( torch.tensor(i["tarin_diffs"]).cpu().numpy() )
-            if MODE=="val":
+            if MODE == "val":
                 shadow_test_losses.append(torch.tensor(i["val_diffs"]).cpu().numpy() )
-            elif MODE=="test":
+            elif MODE == "test":
                 shadow_test_losses.append(torch.tensor(i["test_diffs"]).cpu().numpy() )
-    elif attack_mode=="loss":
+            elif MODE == 'mix':
+                random_indices = torch.randperm(i["test_diffs"].shape[0])
+                shadow_test_loss = i["test_diffs"][random_indices[:mix_length]]
+                shadow_test_loss = torch.tensor(shadow_test_loss).cpu().numpy()
+                mix_test_loss = torch.tensor(i["mix_diffs"]).cpu().numpy()
+                mix_test_loss = np.concatenate([shadow_test_loss,mix_test_loss],axis=0)
+                print('---> Mix test loss shape: ', mix_test_loss.shape)
+                shadow_test_losses.append(mix_test_loss)
+        
+    elif attack_mode == "loss":
         for i in shadow_res:
             shadow_train_losses.append(-ce_loss_fn(i["train_res"]["logit"] , i["train_res"]["labels"]).cpu().numpy() )
-            if MODE=="val":
+            if MODE == "val":
                 shadow_test_losses.append(-ce_loss_fn(i["val_res"]["logit"], i["val_res"]["labels"]).cpu().numpy() )
-            elif MODE=="test":
+            elif MODE == "test":
                 shadow_test_losses.append(-ce_loss_fn(i["test_res"]["logit"], i["test_res"]["labels"]).cpu().numpy() )
             elif MODE == 'mix':
                 random_indices = torch.randperm(i["test_res"]["logit"].shape[0])
@@ -203,33 +206,35 @@ def lira_attack_ldh_cosine(f,epch,K, save_dir, extract_fn=None,attack_mode="cos"
                 shadow_test_loss = torch.tensor(shadow_test_loss).cpu().numpy()
                 mix_test_loss=-ce_loss_fn(i["mix_res"]["logit"] , i["mix_res"]["labels"] ).cpu().numpy()
                 mix_test_loss = np.concatenate([shadow_test_loss,mix_test_loss],axis=0)
-                print('mix_test_loss shape:',mix_test_loss.shape)
+                print('---> Mix test loss shape: ', mix_test_loss.shape)
                 shadow_test_losses.append(mix_test_loss)
 
-    shadow_train_losses_stack=np.vstack( shadow_train_losses )
-    shadow_test_losses_stack=np.vstack( shadow_test_losses )
-    # print('shadow_train_losses_stack:',shadow_train_losses_stack.shape)
+    shadow_train_losses_stack = np.vstack( shadow_train_losses )
+    shadow_test_losses_stack = np.vstack( shadow_test_losses )
 
-    ## 打印local model统计信息，观察结果
-    print('mean 0 \t train:',target_train_loss.mean(axis=0),'\tvar:',target_train_loss.var(axis=0), ' \t test:', target_test_loss.mean(axis=0),'\tvar:',target_test_loss.var(axis=0))
+    print('<---------- + ----------> Mean 0')
+    print(f'Train: {target_train_loss.mean(axis=0)} --- Var: {target_train_loss.var(axis=0)}')
+    print(f'Test: {target_test_loss.mean(axis=0)} --- Var: {target_test_loss.var(axis=0)}')
     
-    i=1
+    i = 1
     for train_loss, test_loss in zip(shadow_train_losses, shadow_test_losses):
-        print('mean',i, ' \t train:',train_loss.mean(axis=0),'\tvar:',train_loss.var(axis=0),' \t test:',test_loss.mean(axis=0), '\tvar:',test_loss.var(axis=0) )
-        i+=1
-    view_list = [0,1,2,3,4, 500,501,502,503,504, -5,-4,-3,-2,-1]
-    print('########### Training samples: ############')
+        print(f'Train: {train_loss.mean(axis=0)} --- Var: {train_loss.var(axis=0)}')
+        print(f'Test: {train_loss.mean(axis=0)} --- Var: {train_loss.var(axis=0)}')
+        i += 1
+
+    view_list = [0, 1, 2, 3, 4, 500, 501, 502, 503, 504, -5, -4, -3, -2, -1]
+    
+    print('==================== Training samples ====================')
+    
     print('Sample  ', end='')
     for j in view_list:
         print(f'{j}      ',' \t', end='')
     print('')
-    ### 第0个client
     print('Client 0 ', end='')
     for j in view_list:
         view_score = '%.6f' % target_train_loss[j]
         print(f'{view_score} \t', end='')
     print('')
-    ### 输出统计信息
     print('Mean ', end='')
     for j in view_list:
         view_score = '%.6f' % np.mean(shadow_train_losses_stack, axis=0)[j]
@@ -240,8 +245,6 @@ def lira_attack_ldh_cosine(f,epch,K, save_dir, extract_fn=None,attack_mode="cos"
         view_score = '%.6f' % np.var(shadow_train_losses_stack, axis=0)[j]
         print(f'{view_score} \t', end='')
     print('')
-    
-    ### 第1-9个client
     for i, train_loss in zip(range(1,K), shadow_train_losses):
         print(f'Client {i} ', end='')
         for j in view_list:
@@ -249,14 +252,14 @@ def lira_attack_ldh_cosine(f,epch,K, save_dir, extract_fn=None,attack_mode="cos"
             print(f'{view_score} \t', end='')
         print('')
     print('')
-    print('########### Testing samples: ############')
-    ### 第0个client
+    
+    print('==================== Testing samples ====================')
+    
     print('Client 0', end='')
     for j in view_list:
         view_score = '%.6f' % target_test_loss[j]
         print(f'{view_score} \t', end='')
     print('')
-
     print('Mean ', end='')
     for j in view_list:
         view_score = '%.6f' % np.mean(shadow_test_losses_stack, axis=0)[j]
@@ -267,27 +270,28 @@ def lira_attack_ldh_cosine(f,epch,K, save_dir, extract_fn=None,attack_mode="cos"
         view_score = '%.6f' % np.var(shadow_test_losses_stack, axis=0)[j]
         print(f'{view_score} \t', end='')
     print('')
-    ### 第1-9个client
     for i, test_loss in zip(range(1,K ), shadow_test_losses):
         print(f'Client {i} ', end='')
         for j in view_list:
             view_score = '%.6f' % test_loss[j]
             print(f'{view_score} \t', end='')
         print('')
-    print('select_mode',select_mode, type(select_mode))
-    print('select_method',select_method)
-    print('attack_mode:',attack_mode)
+    
+    print('==================== Attack settings ====================')
+    print('---> Select mode: ', select_mode, type(select_mode))
+    print('---> Select method: ', select_method)
+    print('---> Attack mode: ', attack_mode)
 
     if select_mode == 1 and attack_mode =='cos':
-        # print('***********first in*************')
+        
         tmps=[]
         means=[]
         client_ids=[]
         
         if select_method == 'outlier':
             # shadow_mdm_stack = np.vstack(shadow_train_losses_stack, shadow_test_losses_stack)
-            train_mu_out=np.zeros_like(shadow_train_losses_stack.mean(axis=0))
-            train_var_out=np.zeros_like(shadow_train_losses_stack.var(axis=0)+1e-8)
+            train_mu_out = np.zeros_like(shadow_train_losses_stack.mean(axis=0))
+            train_var_out = np.zeros_like(shadow_train_losses_stack.var(axis=0)+1e-8)
             print('**************',train_mu_out.shape)
             test_mu_out=np.zeros_like(shadow_test_losses_stack.mean(axis=0))
             test_var_out=np.zeros_like(shadow_test_losses_stack.var(axis=0)+1e-8)
@@ -295,18 +299,18 @@ def lira_attack_ldh_cosine(f,epch,K, save_dir, extract_fn=None,attack_mode="cos"
             for j in range(0,shadow_train_losses_stack.shape[1]):
                 mask = shadow_train_losses_stack[:,j] < shadow_train_losses_stack[:,j].mean(axis=0) + 3*shadow_train_losses_stack[:,j].std(axis=0)
                 sel_mdm = shadow_train_losses_stack[:,j][mask]
-                if j %2000==0:
-                    print(' train outlier view:')
+                if j % 2000 == 0:
+                    print('---------- Train outlier view ----------')
                     print(shadow_train_losses_stack[:,j])
                     print(target_train_loss[j])
-                    print('sel_mdm.shape', sel_mdm.shape)
-                if sel_mdm.shape[0]==0:
+                    print('sel_mdm.shape: ', sel_mdm.shape)
+                if sel_mdm.shape[0] == 0:
                     if j % 50 == 0:
-                        print('outlier view:')
-                        print('mask:',mask)
+                        print('---------- Outlier view ----------')
+                        print('mask: ',mask)
                         print(shadow_train_losses_stack[:,j])
                         print(target_train_loss[j])
-                    sel_mdm=np.array([np.min(shadow_train_losses_stack[:,j])])
+                    sel_mdm = np.array([np.min(shadow_train_losses_stack[:,j])])
                 train_mu_out[j] = np.mean(sel_mdm, axis=0)
                 train_var_out[j] = np.var(sel_mdm, axis=0)+1e-8
             
@@ -314,7 +318,7 @@ def lira_attack_ldh_cosine(f,epch,K, save_dir, extract_fn=None,attack_mode="cos"
                 mask = shadow_test_losses_stack[:,j] < shadow_test_losses_stack[:,j].mean(axis=0) + 3*shadow_test_losses_stack[:,j].std(axis=0)
                 sel_mdm = shadow_test_losses_stack[:,j][mask]
                 if j % 10==0:
-                    print('outlier view:')
+                    print('---------- Outlier view ----------')
                     print(shadow_test_losses_stack[:,j])
                     print(target_test_loss[j])
                     print(mask)
@@ -322,22 +326,23 @@ def lira_attack_ldh_cosine(f,epch,K, save_dir, extract_fn=None,attack_mode="cos"
                 # sel_mdm = np.sort(shadow_test_losses_stack[:,j])[2:3+SHADOW_NUM]
                 # sel_mdm = shadow_test_losses_stack[:,j][mask]
                 
-                if j %2000==0:
-                    print('test outlier view:')
+                if j % 2000 == 0:
+                    print('---------- Test outlier view ----------')
                     print(shadow_test_losses_stack[:,j])
                     print(target_test_loss[j])
                     print('sel_mdm.shape', sel_mdm.shape)
-                if sel_mdm.shape[0]==0:
+                
+                if sel_mdm.shape[0] == 0:
                     if j % 50==0:
-                        print('outlier view:')
+                        print('---------- Outlier view ----------')
                         print(shadow_test_losses_stack[:,j])
                         print(target_test_loss[j])
                         print('sel_mdm.shape', sel_mdm.shape)
                     sel_mdm=np.array([np.min(shadow_test_losses_stack[:,j])])
+
                 test_mu_out[j] = np.mean(sel_mdm, axis=0)
                 test_var_out[j] = np.var(sel_mdm, axis=0)+1e-8    
 
-    ## 计算均值和方差，以备分布估计
     if attack_mode != 'cos'or select_mode == 0 or (select_method != 'mean_per' and select_method != 'outlier'):
         train_mu_out=shadow_train_losses_stack.mean(axis=0)
         train_var_out=shadow_train_losses_stack.var(axis=0)+1e-8
@@ -586,7 +591,7 @@ def fig_out(x_axis_data, MAX_K,defence,seed,log_path, d,avg_d=None,single_score=
     # assert 0
 
 @ torch.no_grad()
-def attack_comparison(p,log_path, save_dir, epochs, MAX_K, defence,seed):
+def attack_comparison(p, log_path, save_dir, epochs, MAX_K, defence, seed):
     """
     Summary of the Correspondence between attack methods in paper and scores in codea:
     summary_dict={
@@ -603,27 +608,22 @@ def attack_comparison(p,log_path, save_dir, epochs, MAX_K, defence,seed):
     }
     """
 
-    final_acc=lira_attack_ldh_cosine(p,epochs[-1],MAX_K, save_dir, extract_fn=extract_hinge_loss)[0]
+    final_acc=lira_attack_ldh_cosine(p, epochs[-1], MAX_K, save_dir, extract_fn=extract_hinge_loss)[0]
 
     lira_scores=[]
     lira_loss_scores=[]
     common_scores=[]
     other_scores={}
 
-    ## 记录TPR@FPR=0.01
     scores={k:[] for k in attack_modes}
     scores["lira"]=[]
     scores["lira_loss"]=[]
-    ## 记录所有epoch的TPR@FPR=0.01中最大的
     single_score={k:0 for k in attack_modes}
     single_score["lira"]=0
     single_score["lira_loss"]=0
-    ## 记录每轮 lira的mem和non-mem的cdf, 即(train_l_out,test_l_out) 
     reses_lira=[]
     reses_lira_loss=[]
-    ## 记录其他attack mode的 (val_liratios,train_liratios)
     reses_common={k:[] for k in attack_modes}
-    ## 记录所有轮数cdf avg后AUC攻击的TPR得分
     avg_scores={k:None for k in attack_modes}
     avg_scores["lira"]=None
     avg_scores["lira_loss"]=None
@@ -633,47 +633,34 @@ def attack_comparison(p,log_path, save_dir, epochs, MAX_K, defence,seed):
     auc_dict["lira_loss"]=[]
 
     for epch in epochs:
-        # try:
         lira_score=lira_attack_ldh_cosine(p,epch,MAX_K,save_dir, extract_fn=extract_hinge_loss) 
         lira_loss_score=lira_attack_ldh_cosine(p,epch,MAX_K,save_dir, extract_fn=extract_hinge_loss,attack_mode='loss') 
-            
-            # the above function retruns: accs, tprs, auc, log_auc, (train_l_out,test_l_out) 
-            ## log_auc: 基于log_lira所得的auc
-        # except ValueError:
-        #     print("ValueError")
-        #     continue
         scores["lira"].append(lira_score[1]['0.001'])
         scores["lira_loss"].append(lira_loss_score[1]['0.001'])
         auc_dict["lira"].append(lira_score[2])
         auc_dict["lira_loss"].append(lira_loss_score[2])
-
-
-
         # lira_score=lira_attack(p,epch,K=9,extract_fn=extract_hinge_loss)
         for attack_mode in attack_modes:
             common_score=cos_attack(p,0,epch,attack_mode,extract_fn=extract_hinge_loss) 
-            # the above function return:  accs, tprs, auc, log_auc, (val_liratios,train_liratios)
             reses_common[attack_mode].append(common_score[-1])
             scores[attack_mode].append(common_score[1]['0.001'])
             auc_dict[attack_mode].append(common_score[2])
-            print('____________________',attack_mode)
+            print(f'<---------- {attack_mode} ---------->')
             print(common_score[1])
-            if epch ==200 and attack_mode=="loss based":
+            if epch ==200 and attack_mode == "loss based":
                 other_scores["loss_single_epch_score"]=common_score[1] # tpr
                 other_scores["loss_single_auc"]=[common_score[2],common_score[3]] # tpr, auc
 
         lira_scores.append(lira_score[1]['0.001'])
         lira_loss_scores.append(lira_loss_score[1]['0.001'])
-        common_scores.append(common_score[1]['0.001']) # 为最后一个loss based的common_score, 但似乎这个list没啥用
-
-        reses_lira.append(lira_score[-1]) # 当下epoch的 (train_l_out,test_l_out) 
+        common_scores.append(common_score[1]['0.001'])
+        reses_lira.append(lira_score[-1])  
         reses_lira_loss.append(lira_loss_score[-1])
 
     for attack_mode in attack_modes:
         sorted_id = sorted(range(len(scores[attack_mode])), key=lambda k: scores[attack_mode][k], reverse=True)
         single_score[attack_mode]=(scores[attack_mode][sorted_id[0]])
         single_score[f'single {attack_mode}_auc'] = auc_dict[attack_mode][sorted_id[0]]
-
 
     for attack_mode in ['lira', 'lira_loss']:
         sorted_id = sorted(range(len(scores[attack_mode])), key=lambda k: scores[attack_mode][k], reverse=True)
@@ -684,15 +671,12 @@ def attack_comparison(p,log_path, save_dir, epochs, MAX_K, defence,seed):
         # print('len(scores[attack_mode]): ',len(scores[attack_mode]))  30
         single_score[f'200 {attack_mode}']=(scores[attack_mode][int(epochs[-1]/20)])
         single_score[f'200 single_{attack_mode}_auc'] = auc_dict[attack_mode][int(epochs[-1]/20)]
+    
     for attack_mode in ['lira', 'lira_loss']:
         single_score[f'200 {attack_mode}']=(scores[attack_mode][int(epochs[-1]/20)])
         single_score[f'200 single_{attack_mode}_auc'] = auc_dict[attack_mode][int(epochs[-1]/20)]
 
-
-    print('------------ ----------------- -------------  ')
-    print('------------ Sequential attack -------------  ')
-    print('------------ ----------------- -------------  ')
-
+    print('==================== Sequential attack ====================')
     reses=reses_lira
     train_score=np.vstack([ i[0].reshape(1,-1) for i in reses]).mean(axis=0)
     test_score=np.vstack([ i[1].reshape(1,-1) for i in reses]).mean(axis=0)
@@ -782,7 +766,7 @@ def attack_comparison(p,log_path, save_dir, epochs, MAX_K, defence,seed):
     avg_scores["grad norm"]=tprs
     other_scores["grad_norm_auc"]=[auc,log_auc]
     print(f"tprs:{tprs}")
-    print("success!")
+    print("===> Success!!!")
 
     reses=reses_common["loss based"]
     # print(reses)
@@ -798,10 +782,9 @@ def attack_comparison(p,log_path, save_dir, epochs, MAX_K, defence,seed):
     avg_scores["loss based"]=tprs
     other_scores["loss_based_auc"]=[auc,log_auc]
     print(f"averaged_loss tprs:{tprs} \n auc:{auc}")
-    print("success!")
+    print("===> Success!!!")
 
     fig_out(epochs,MAX_K, defence,seed,log_path,scores,avg_scores,single_score, other_scores,final_acc)
-
 
 def main(argv):
 
@@ -841,7 +824,7 @@ def main(argv):
                     select_method ='outlier'
                     SHADOW_NUM = 4
                 
-                print("#################### Các thông tin ####################\n")
+                print("==================== Các thông tin về cuộc tấn công ====================\n")
                 print(f"1. Folder: {os.path.join(root, name)}")
                 print(f"2. Mode: {MODE}")
                 print(f"3. Attack modes: {attack_modes}")
@@ -852,6 +835,7 @@ def main(argv):
                 print(f"8. Shadow num: {SHADOW_NUM}")
                 print(f"9. Seed: {SEED}")
                 print(f"10. Model: {model}")
+                print()
 
                 if 'cifar100' in name:
                     mix_length = int(10000/MAX_K)
@@ -867,15 +851,14 @@ def main(argv):
                 elif model == "resnet":
                     log_path="logs/log_res"
 
-                print("#################### Kết quả ####################\n")
                 try:
                     attack_comparison(PATH, log_path, save_dir, epochs, MAX_K, defence,seed)
-                    print("---> Success!")
-                    rewrite_print("---> Success!")
+                    print("---> Yes sirr! Check log files!\n")
+                    rewrite_print("---> Yes sirr! Check log files!\n")
                 except IOError:
-                    print("---> Error:", MAX_K, PATH)
-                    rewrite_print("---> Error:", MAX_K, PATH)
-
+                    if PATH != "log_fedmia/iid/cicmaldroid_K10_N5000_mlp_defnone_iid$1_$1_$sgd_local1_s18052025mlp/client_{}_losses_epoch{}.pkl":
+                        print("---> Oh no:", MAX_K, PATH)
+                        rewrite_print("---> Oh no:", MAX_K, PATH)
 
 # Định nghĩa lại hàm print, ghi ra file thay vì in console
 rewrite_print = print # Lưu lại hàm print gốc

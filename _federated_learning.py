@@ -55,7 +55,6 @@ class FederatedLearning(Experiment):
                                     noniid_beta=self.args.beta
                                     )
 
-        print()
         print("Train & Test set length: ", len(self.train_set), len(self.test_set))
         print("Train idxs[0] & Train idxs[1]: ", len(self.train_idxs[0]), len(self.train_idxs[1]))
         
@@ -114,7 +113,7 @@ class FederatedLearning(Experiment):
         model = models.__dict__[self.args.model_name] (num_classes = self.num_classes)
         self.model = model.to(self.device)
         torch.backends.cudnn.benchmark = True
-        print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
+        print('Total params: %.2f\n' % (sum(p.numel() for p in model.parameters())))
 
     def train(self):
         train_ldr = DataLoader(self.train_set, batch_size=self.batch_size, shuffle=False, num_workers=2)
