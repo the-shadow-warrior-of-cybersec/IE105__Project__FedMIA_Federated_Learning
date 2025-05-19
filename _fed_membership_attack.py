@@ -14,7 +14,7 @@ import math
 import random
 import warnings
 
-# ==================== Các hàm và logic hỗ trợ ====================
+# -------------------- Các hàm và logic hỗ trợ --------------------
 
 # Loại bỏ các cảnh báo không cần thiết
 warnings.filterwarnings('ignore')
@@ -159,7 +159,7 @@ def fig_out(x_axis_data, MAX_CLIENTS,defence,seed,log_path, d,avg_d=None,single_
     
     # pdf_path="/".join(pdf_path)+"/attack9_val_mode_positive_plus.pdf"
     # attack9_val_mode_positive_plus_select_mean_<<.pdf
-    print_to_file('fig saved in', pdf_path)
+    print_to_file('\n---> Fig saved in: ', pdf_path + '\n')
     plt.savefig(pdf_path)
 
     # print_to_file("log_path0:",log_path)
@@ -171,7 +171,7 @@ def fig_out(x_axis_data, MAX_CLIENTS,defence,seed,log_path, d,avg_d=None,single_
         json.dump({"avg_d":avg_d,"single_score":single_score,"other_scores":other_scores,"accs":accs},f, indent=4)
     # assert 0
 
-# ==================== Các hàm attack cho các mode ====================
+# -------------------- Các hàm attack cho các mode --------------------
 
 def common_attack(f, K, epch, extract_fn = None):
 
@@ -188,15 +188,14 @@ def common_attack(f, K, epch, extract_fn = None):
         target_test_loss =- ce_loss_fn(target_res["val_res"]["logit"], target_res["val_res"]["labels"] )
 
     auc, log_auc, tprs = plot_auc("common", torch.tensor(target_test_loss), torch.tensor(target_train_loss),epch)
-    print_to_file("__"*10,"common")
-    print_to_file(f"---> True positive rates: {tprs}", log_auc)
-    print_to_file("__"*10)
+    print_to_file("--------------------= Common attack --------------------\n")
+    print_to_file(f"---> True positive rates: {tprs}\n", log_auc)
 
     return accs, tprs, auc, log_auc, (target_test_loss,target_train_loss)
 
 def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode="cos"):
 
-    print_to_file(f'\n==================== Using attack mode {attack_mode} on {epch} number of epochs ====================\n')
+    print_to_file(f'\n-------------------- Using attack mode {attack_mode} on {epch} number of epochs --------------------\n')
     
     save_log = save_dir + '/' + f'attack_sel{select_mode}_{select_method}_{attack_mode}.log'
     accs = []
@@ -212,6 +211,7 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
     target_res = training_res[target_idx]
     shadow_res = training_res[val_idx:]
 
+    # Target model
     if attack_mode == "cos":
         target_train_loss = torch.tensor(target_res["tarin_cos"]).cpu().numpy()
         if MODE == "test":
@@ -253,6 +253,7 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
     shadow_train_losses = []
     shadow_test_losses = []
 
+    # Shadow models
     if attack_mode == "cos":
         for i in shadow_res:
             shadow_train_losses.append( torch.tensor(i["tarin_cos"]).cpu().numpy() )
@@ -305,7 +306,6 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
     shadow_train_losses_stack = np.vstack( shadow_train_losses )
     shadow_test_losses_stack = np.vstack( shadow_test_losses )
 
-    print_to_file('<---------- + ----------> Mean 0')
     print_to_file(f'Train: {target_train_loss.mean(axis=0)} --- Var: {target_train_loss.var(axis=0)}')
     print_to_file(f'Test: {target_test_loss.mean(axis=0)} --- Var: {target_test_loss.var(axis=0)}')
     
@@ -317,7 +317,7 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
 
     view_list = [0, 1, 2, 3, 4, 500, 501, 502, 503, 504, -5, -4, -3, -2, -1]
     
-    print_to_file('==================== Training samples ====================')
+    print_to_file('-------------------- Training samples --------------------\n')
     
     print_to_file('Sample  ', end='')
     for j in view_list:
@@ -346,7 +346,7 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
         print_to_file('')
     print_to_file('')
     
-    print_to_file('==================== Testing samples ====================')
+    print_to_file('-------------------- Testing samples --------------------\n')
     
     print_to_file('Client 0', end='')
     for j in view_list:
@@ -370,7 +370,7 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
             print_to_file(f'{view_score} \t', end='')
         print_to_file('')
     
-    print_to_file('==================== Attack settings ====================')
+    print_to_file('-------------------- Attack settings --------------------\n')
     print_to_file('---> Select mode: ', select_mode, type(select_mode))
     print_to_file('---> Select method: ', select_method)
     print_to_file('---> Attack mode: ', attack_mode)
@@ -513,9 +513,9 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
         print_to_file("__"*10,"lira_attack")
         print_to_file(f"tprs:{tprs}",log_auc)
 
-    return accs,tprs,auc,log_auc,(train_l_out,test_l_out)
+    return accs, tprs, auc, log_auc, (train_l_out, test_l_out)
 
-def cos_attack(f,K,epch,attack_mode,extract_fn=None):
+def cos_attack(f, K, epch, attack_mode, extract_fn = None):
 
     accs=[]
     target_res=torch.load(f.format(0,epch))
@@ -618,19 +618,20 @@ def cos_attack(f,K,epch,attack_mode,extract_fn=None):
 
     return accs,tprs,auc,log_auc,(train_liratios, val_liratios)
 
-# ==================== Hàm chạy attack và so sánh giữa các loại attack ====================
+# -------------------- Hàm chạy attack và so sánh giữa các loại attack --------------------
 
 @ torch.no_grad()
 def attack_comparison(p, log_path, save_dir, epochs, MAX_CLIENTS, defence, seed):
     """
     Summary of the Correspondence between attack methods in paper and scores in codea:
     summary_dict={
+
     'Blackbox-Loss': scores['loss based'],
     'Grad-Cosine': scores['cosine attack'],
     'Grad-Diff': scores['grad diff'],
     'Grad-Norm': scores['grad norm'],
 
-    'Loss-Series': avg_scores["loss based"],
+    'Loss-Series': avg_scores["loss based"], 
     'Avg-Cosine': avg_scores["cosine attack"],
 
     'FedMIA-I': avg_scores["lira_loss"],
@@ -638,40 +639,39 @@ def attack_comparison(p, log_path, save_dir, epochs, MAX_CLIENTS, defence, seed)
     }
     """
 
-    final_acc=lira_attack_ldh_cosine(p, epochs[-1], MAX_CLIENTS, save_dir, extract_fn=extract_hinge_loss)[0]
+    lira_loss_scores = [] 
+    lira_scores = [] 
+    common_scores = [] 
+    other_scores = {} 
 
-    lira_scores=[]
-    lira_loss_scores=[]
-    common_scores=[]
-    other_scores={}
+    scores = { k : [] for k in baseline_attack_modes}
+    scores["lira"] = []
+    scores["lira_loss"] = []
+    single_score = { k : 0 for k in baseline_attack_modes}
+    single_score["lira"] = 0
+    single_score["lira_loss"] = 0
+    reses_lira = []
+    reses_lira_loss = []
+    reses_common = {k : [] for k in baseline_attack_modes}
+    avg_scores = {k : None for k in baseline_attack_modes}
+    avg_scores["lira"] = None
+    avg_scores["lira_loss"] = None
 
-    scores={k:[] for k in baseline_attack_modes}
-    scores["lira"]=[]
-    scores["lira_loss"]=[]
-    single_score={k:0 for k in baseline_attack_modes}
-    single_score["lira"]=0
-    single_score["lira_loss"]=0
-    reses_lira=[]
-    reses_lira_loss=[]
-    reses_common={k:[] for k in baseline_attack_modes}
-    avg_scores={k:None for k in baseline_attack_modes}
-    avg_scores["lira"]=None
-    avg_scores["lira_loss"]=None
+    auc_dict = {k : [] for k in baseline_attack_modes}
+    auc_dict["lira"] = []
+    auc_dict["lira_loss"] = []
 
-    auc_dict={k:[] for k in baseline_attack_modes}
-    auc_dict["lira"]=[]
-    auc_dict["lira_loss"]=[]
+    final_acc = None
 
     for epch in epochs:
-        lira_score=lira_attack_ldh_cosine(p,epch,MAX_CLIENTS,save_dir, extract_fn=extract_hinge_loss) 
-        lira_loss_score=lira_attack_ldh_cosine(p,epch,MAX_CLIENTS,save_dir, extract_fn=extract_hinge_loss,attack_mode='loss') 
+        lira_score = lira_attack_ldh_cosine(p,epch,MAX_CLIENTS,save_dir, extract_fn=extract_hinge_loss, attack_mode = 'cos') # Dựa trên cosine
+        lira_loss_score = lira_attack_ldh_cosine(p,epch,MAX_CLIENTS,save_dir, extract_fn=extract_hinge_loss, attack_mode ='loss') # Dựa trên loss
         scores["lira"].append(lira_score[1]['0.001'])
         scores["lira_loss"].append(lira_loss_score[1]['0.001'])
         auc_dict["lira"].append(lira_score[2])
         auc_dict["lira_loss"].append(lira_loss_score[2])
-        # lira_score=lira_attack(p,epch,K=9,extract_fn=extract_hinge_loss)
         for attack_mode in baseline_attack_modes:
-            common_score=cos_attack(p,0,epch,attack_mode,extract_fn=extract_hinge_loss) 
+            common_score = cos_attack(p, 0, epch, attack_mode, extract_fn = extract_hinge_loss) 
             reses_common[attack_mode].append(common_score[-1])
             scores[attack_mode].append(common_score[1]['0.001'])
             auc_dict[attack_mode].append(common_score[2])
@@ -686,6 +686,7 @@ def attack_comparison(p, log_path, save_dir, epochs, MAX_CLIENTS, defence, seed)
         common_scores.append(common_score[1]['0.001'])
         reses_lira.append(lira_score[-1])  
         reses_lira_loss.append(lira_loss_score[-1])
+        final_acc = lira_score[0]
 
     for attack_mode in baseline_attack_modes:
         sorted_id = sorted(range(len(scores[attack_mode])), key=lambda k: scores[attack_mode][k], reverse=True)
@@ -706,10 +707,10 @@ def attack_comparison(p, log_path, save_dir, epochs, MAX_CLIENTS, defence, seed)
         single_score[f'200 {attack_mode}']=(scores[attack_mode][int(epochs[-1]/20)])
         single_score[f'200 single_{attack_mode}_auc'] = auc_dict[attack_mode][int(epochs[-1]/20)]
 
-    print_to_file('==================== Sequential attack ====================')
-    reses=reses_lira
-    train_score=np.vstack([ i[0].reshape(1,-1) for i in reses]).mean(axis=0)
-    test_score=np.vstack([ i[1].reshape(1,-1) for i in reses]).mean(axis=0)
+    print_to_file('-------------------- Sequential attack --------------------\n')  
+    reses = reses_lira
+    train_score = np.vstack([ i[0].reshape(1,-1) for i in reses]).mean(axis=0)
+    test_score = np.vstack([ i[1].reshape(1,-1) for i in reses]).mean(axis=0)
 
     print_to_file('avged train_score.shape:',train_score.shape)
     print_to_file('******************************************')
@@ -816,7 +817,7 @@ def attack_comparison(p, log_path, save_dir, epochs, MAX_CLIENTS, defence, seed)
 
     fig_out(epochs,MAX_CLIENTS, defence,seed,log_path,scores,avg_scores,single_score, other_scores,final_acc)
 
-# ==================== Hàm main ====================
+# -------------------- Hàm main --------------------
 
 def main(argv):
 
@@ -838,11 +839,11 @@ def main(argv):
             # Nếu không phải là thư mục chứa log training thì bỏ qua
             if  root != p_folder: 
                 continue
-            
-            # Vì việc training tạo ra 2 thư mục
-            if name.contains(f"_s{seed}{model}"):
-                continue
 
+            # Xóa final model khỏi scoop tấn công
+            if '_final_model' in name:
+                continue
+            
             PATH = os.path.join(root, name) # Đường dẫn đến thư mục chứa log training
             PATH += "/client_{}_losses_epoch{}.pkl" # Đường dẫn đến file log của client
 
@@ -864,7 +865,6 @@ def main(argv):
                 SHADOW_NUM = 4
             
 
-
             print_to_everything("==================== Các thông tin về cuộc tấn công ====================\n")
             print_to_everything(f"1. Thư mục log: {os.path.join(root, name)}")
             print_to_everything(f"2. Chế độ tấn công: {MODE}")
@@ -873,7 +873,7 @@ def main(argv):
             print_to_everything(f"5. Cách xử lý loss: {select_method}")
             print_to_everything(f"8. Số lượng client trong mô hình bóng: {SHADOW_NUM}")
             print_to_everything(f"9. Seed: {SEED}")
-            print_to_everything(f"10. Model được sử dụng: {model}")
+            print_to_everything(f"10. Model được sử dụng: {model}\n")
 
             if 'cifar100' in name:
                 mix_length = int(10000/MAX_CLIENTS)

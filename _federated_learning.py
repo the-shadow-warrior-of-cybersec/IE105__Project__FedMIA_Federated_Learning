@@ -527,12 +527,11 @@ def main(args):
     logs['test_acc'] = test_acc
     logs['bp_local'] = True if args.bp_interval == 0 else False
 
-    if not os.path.exists(save_dir + args.model_name +'/' + args.dataset):
-        os.makedirs(save_dir + args.model_name +'/' + args.dataset)
-    torch.save(logs,
-               save_dir + args.model_name +'/' + args.dataset + '/epoch_{}_E_{}_u_{}_{:.4f}_{:.4f}.pkl'.format(
-                    args.epochs, args.local_ep, args.num_users, time, test_acc
-               ))
+    if not os.path.exists(save_dir + '/' + '_final_model'):
+        os.makedirs(save_dir + '/' + '_final_model')
+    torch.save(logs, save_dir + '/' + '_final_model' + '/epoch_{}_E_{}_u_{}_{:.4f}_{:.4f}.pkl'.format(
+        args.epochs, args.local_ep, args.num_users, time, test_acc
+    ))
     return
 
 if __name__ == '__main__':

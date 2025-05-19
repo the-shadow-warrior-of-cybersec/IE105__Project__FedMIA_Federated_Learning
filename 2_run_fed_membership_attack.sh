@@ -12,6 +12,13 @@ fi
 path="log_fedmia/$temp"
 echo
 
+# Kiểm tra xem thư mục đã tồn tại chưa
+if [ ! -d "$path" ]; then
+    echo "Lỗi: Chưa có log về việc trên dữ liệu $temp!"
+    echo
+    exit 1
+fi
+
 read -p "Nhập số tổng epoch được dùng để train: " total_epoch
 if ! [[ "$total_epoch" =~ ^[0-9]+$ ]]; then
     echo "Lỗi: Total epoch phải là số nguyên!"
@@ -33,8 +40,8 @@ if ! [[ "$seed" =~ ^[0-9]+$ ]]; then
 fi
 echo
 
-echo "#################### Attacking... ####################"
+echo "#################### Quy trình tấn công ####################"
 echo
 
 gpu_index=0 # Lấy index ứng với index GPU của máy
-python -u _fed_membership_attack.py  ${path} ${total_epoch} ${attack_mode}  ${gpu_index} ${seed}  
+python -u _fed_membership_attack.py  ${path} ${total_epoch} ${attack_mode} ${gpu_index} ${seed}
