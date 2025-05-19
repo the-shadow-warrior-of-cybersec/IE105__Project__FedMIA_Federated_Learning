@@ -80,24 +80,47 @@ def get_data(dataset, data_root, iid, num_users,data_aug, noniid_beta):
 
     if ds == 'cicmaldroid':
         csv_path = os.path.join(data_root, "maldroid-2022/feature_vectors_syscalls_frequency_5_Cat.csv")
-        transform = transforms.Lambda(lambda x: (x - x.mean()) / (x.std() + 1e-5))
         
-        # Tạo dataset theo mode binary hoặc multiclass
-        full_set = CICMalDroidDataset(csv_file=csv_path, transform=transform, mode="multiclass")
+        # Đọc toàn bộ dữ liệu trước để chuẩn hóa toàn cục
+        full_set_raw = CICMalDroidDataset(csv_file=csv_path, transform=None, mode="multiclass")
+        all_features = []
+        all_labels = []
+        for i in range(len(full_set_raw)):
+            feat, label = full_set_raw[i]
+            all_features.append(feat)
+            all_labels.append(label)
+        all_features = torch.stack(all_features)
+        mean = all_features.mean(dim=0)
+        std = all_features.std(dim=0) + 1e-5
+
+        # Chuẩn hóa toàn cục cho mọi sample
+        def norm_transform(x):
+            return (x - mean) / std
+
+        full_set = CICMalDroidDataset(csv_file=csv_path, transform=norm_transform, mode="multiclass")
         
         total_size = len(full_set)
-        # Tạo danh sách chỉ số từ 0 đến total_size-1
         all_indices = list(range(total_size))
-        
-        # Tách theo tỷ lệ 80% train, 20% test (có thể xáo trộn nếu muốn)
         random.shuffle(all_indices)
         train_size = int(0.8 * total_size)
         train_indices = all_indices[:train_size]
         test_indices = all_indices[train_size:]
         
-        # Sử dụng DatasetSplit để tạo tập con
         train_set = DatasetSplit(full_set, train_indices)
         test_set = DatasetSplit(full_set, test_indices)
+
+        # Đảm bảo dữ liệu được chuyển sang float32 cho MLP
+        class FloatDataset(Dataset):
+            def __init__(self, dataset):
+                self.dataset = dataset
+            def __len__(self):
+                return len(self.dataset)
+            def __getitem__(self, idx):
+                x, y = self.dataset[idx]
+                return x.float(), y
+
+        train_set = FloatDataset(train_set)
+        test_set = FloatDataset(test_set)
 
         if iid:
             dict_users, train_idxs, val_idxs = cifar_iid_MIA(train_set, num_users)

@@ -239,7 +239,7 @@ class FederatedLearning(Experiment):
                         needed_test_indexs = None
                         # print('needed_test_indexs:',len(needed_test_indexs))
                     elif self.args.dataset == 'cicmaldroid':
-                        data_num = int(len(self.test_set) / self.num_users)
+                        data_num = max(int(len(self.test_set) / self.num_users), 300)
                     
                     for c_id in range(1,self.num_users):
                         mixed_indexs.extend(random.sample(list(self.train_idxs[c_id]), data_num))
@@ -444,10 +444,10 @@ def get_all_cos(cos_model, initial_loader, test_dataloader, test_set, train_set,
         max_grad_norm=1e10,
     )
  
-    train_dataloader = DataLoader(DatasetSplit(train_set, train_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
+    train_dataloader = DataLoader(DatasetSplit(train_set, train_idxs), batch_size = 64 ,shuffle=False, num_workers=4)
     # val_dataloader = DataLoader(DatasetSplit(train_set, val_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
-    test_dataloader = DataLoader(DatasetSplit(test_set, needed_test_indexs), batch_size=10 , shuffle=False, num_workers=4)
-    mix_dataloader = DataLoader(DatasetSplit(train_set, mix_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
+    test_dataloader = DataLoader(DatasetSplit(test_set, needed_test_indexs), batch_size= 64 , shuffle=False, num_workers=4)
+    mix_dataloader = DataLoader(DatasetSplit(train_set, mix_idxs), batch_size = 64 ,shuffle=False, num_workers=4)
     
     train_cos, train_diffs,train_norm=get_cos_score(train_dataloader,optimizer,cos_model,device,model_grads)
     # val_cos,val_diffs,val_norm=get_cos_score(val_dataloader,optimizer,cos_model,device,model_grads)
