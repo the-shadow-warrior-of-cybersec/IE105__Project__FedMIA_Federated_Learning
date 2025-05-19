@@ -26,12 +26,16 @@ if ! [[ "$total_epoch" =~ ^[0-9]+$ ]]; then
 fi
 echo
 
-read -p "Nhập chế độ tấn công (train/val/test/mix): " attack_mode
-if [[ "$attack_mode" != "train" && "$attack_mode" != "val" && "$attack_mode" != "test" && "$attack_mode" != "mix" ]]; then
-    echo "Lỗi: Chế độ tấn công không tồn tại!"
-    exit 1
-fi
+# read -p "Nhập chế độ tấn công (train/val/test/mix): " attack_mode
+# if [[ "$attack_mode" != "train" && "$attack_mode" != "val" && "$attack_mode" != "test" && "$attack_mode" != "mix" ]]; then
+#     echo "Lỗi: Chế độ tấn công không tồn tại!"
+#     exit 1
+# fi
+# echo
+
+echo "---> Tự chọn chế độ tấn công tối ưu: Mix mode (lấy dữ liệu từ train + val + test)"
 echo
+attack_mode="mix"
 
 read -p "Nhập seed (int): " seed
 if ! [[ "$seed" =~ ^[0-9]+$ ]]; then
