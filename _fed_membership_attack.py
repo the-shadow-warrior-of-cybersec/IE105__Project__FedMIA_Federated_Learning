@@ -33,7 +33,6 @@ def print_to_everything(*arg, end = None):
 
 # ==================== Tính toán các thông số cấn thiết cho thử nghiệm ====================
 
-
 def liratio(mu_in, mu_out, var_in, var_out, new_samples):
     '''
     Tính giá trị phân phối tích lũy (CDF) của các mẫu mới dựa trên một phân phối chuẩn với trung bình (mu_out) và phương sai (var_out).
@@ -158,10 +157,10 @@ def fig_out(x_axis_data, MAX_CLIENTS, defence, seed, log_path, d, avg_d=None, si
                         right = 0.9,
                         hspace = 0.2,
                         wspace = 0.2)
-    print_to_everything("\n==================== Tỉ lệ dự đoán đúng (TPR) tại tỉ lệ chịu lỗi 0.01 (@FPR = 0.01) ====================\n")
+    # print_to_everything("\n==================== Tỉ lệ dự đoán đúng (TPR) tại tỉ lệ chịu lỗi 0.01 (@FPR = 0.01) ====================\n")
     for k in labels_per_epoch.keys():
-        print_to_everything("---> ", end='')
-        print_to_everything(k, d[k], end='\n\n')
+        # print_to_everything("---> ", end='')
+        # print_to_everything(k, d[k], end='\n\n')
         plt.plot(x_axis_data[0:len(d[k])], d[k], linewidth=1, label=labels_per_epoch[k], color=colors[k])
     plt.legend(loc = 3)  
 
@@ -180,8 +179,7 @@ def fig_out(x_axis_data, MAX_CLIENTS, defence, seed, log_path, d, avg_d=None, si
 
     pdf_path=PATH.split("/")[0:-1]
     pdf_path="/".join(pdf_path)+f"/attack_fig_{select_mode}_{select_method}_n{SHADOW_NUM}_s{SEED}.pdf"
-    print_to_console('==================== Xuất biểu đồ ... ====================\n')
-    print_to_console('---> Biểu đồ so sánh giữa các phương pháp tấn công lưu tại: ', pdf_path + '\n')
+    print_to_console('\n===> Biểu đồ so sánh giữa các phương pháp tấn công lưu tại: ', pdf_path + '\n')
     plt.savefig(pdf_path)
 
     log_path = PATH.split("/")[0:-1]
@@ -193,29 +191,13 @@ def fig_out(x_axis_data, MAX_CLIENTS, defence, seed, log_path, d, avg_d=None, si
 
 # ==================== Các hàm chính cho việc tấn công ====================
 
-def common_attack(f, K, epch, extract_fn = None):
+def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode = "cos"):
+    '''
+    Thực hiện tấn công FedMIA.
+    Note: Có nhiều chỗ print bị em comment đi để ẩn đi các thông số không cần thiết để tránh rối mắt
+    '''
 
-    accs = []
-    target_res = torch.load(f.format(0,epch))
-
-    # target_train_loss=hinge_loss_fn(target_res["train_res"]["logit"] , target_res["train_res"]["labels"] )
-    # target_test_loss=hinge_loss_fn(target_res["test_res"]["logit"] , target_res["test_res"]["labels"] )
-    
-    target_train_loss =- ce_loss_fn(target_res["train_res"]["logit"], target_res["train_res"]["labels"] )
-    if MODE == "test":
-        target_test_loss =- ce_loss_fn(target_res["test_res"]["logit"], target_res["test_res"]["labels"] )
-    elif MODE == "val":
-        target_test_loss =- ce_loss_fn(target_res["val_res"]["logit"], target_res["val_res"]["labels"] )
-
-    auc, log_auc, tprs = plot_auc("common", torch.tensor(target_test_loss), torch.tensor(target_train_loss),epch)
-    print_to_file("===================== Common attack ====================\n")
-    print_to_file(f"---> True positive rates: {tprs}\n", log_auc)
-
-    return accs, tprs, auc, log_auc, (target_test_loss,target_train_loss)
-
-def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode="cos"):
-
-    print_to_file(f'\n==================== Sử dụng chế độ tấn công {attack_mode} lên các đối tượng tại epoch {epch} ====================\n')
+    print_to_file(f"\n<----------- FedMIA Attack Result (mode {attack_mode}) ----------->\n")
 
     accs = []
     training_res = []
@@ -233,7 +215,7 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
         return accs, {}, 0, 0, ([], [])
 
 
-    print_to_file(f"a. Cấu trúc (kích thước) của vector loss sau khi tính toán trên dữ liệu test của các đối tượng\n")
+    # print_to_file(f"a. Cấu trúc (kích thước) của vector loss sau khi tính toán trên dữ liệu test của các đối tượng\n")
 
     # Target model
     target_res = training_res[0]
@@ -252,7 +234,7 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
                 target_test_loss = np.concatenate([test_cos[random_indices], mix_cos], axis=0)
             else:
                 target_test_loss = mix_cos
-            print_to_file('Client mục tiêu:', target_test_loss.shape)
+            # print_to_file('Client mục tiêu:', target_test_loss.shape)
     elif attack_mode == "diff":
         target_train_loss = np.array(target_res.get("tarin_diffs", []))
         if MODE == "test":
@@ -267,7 +249,7 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
                 target_test_loss = np.concatenate([test_diffs[random_indices], mix_diffs], axis=0)
             else:
                 target_test_loss = mix_diffs
-            print_to_file('Client mục tiêu:', target_test_loss.shape)
+            # print_to_file('Client mục tiêu:', target_test_loss.shape)
     elif attack_mode == "loss":
         target_train_loss = -ce_loss_fn(
             target_res["train_res"]["logit"], target_res["train_res"]["labels"]
@@ -292,9 +274,9 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
                 target_test_loss = np.concatenate([test_loss, mix_loss], axis=0)
             else:
                 target_test_loss = -ce_loss_fn(mix_logit, mix_labels).cpu().numpy()
-            print_to_file('Client mục tiêu:', target_test_loss.shape)
+            # print_to_file('Client mục tiêu:', target_test_loss.shape)
     else:
-        print_to_file(f"Unknown attack_mode: {attack_mode}")
+        # print_to_file(f"Unknown attack_mode: {attack_mode}")
         return accs, {}, 0, 0, ([], [])
 
     # Shadow models
@@ -315,7 +297,7 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
                     shadow_test_loss = np.concatenate([test_cos[random_indices], mix_cos], axis=0)
                 else:
                     shadow_test_loss = mix_cos
-                print_to_file(f'Client bóng thứ {i + 1}:', shadow_test_loss.shape)
+                # print_to_file(f'Client bóng thứ {i + 1}:', shadow_test_loss.shape)
                 shadow_test_losses.append(shadow_test_loss)
         elif attack_mode == "diff":
             shadow_train_losses.append(np.array(res.get("tarin_diffs", [])))
@@ -331,7 +313,7 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
                     shadow_test_loss = np.concatenate([test_diffs[random_indices], mix_diffs], axis=0)
                 else:
                     shadow_test_loss = mix_diffs
-                print_to_file(f'Client bóng thứ {i + 1}:', shadow_test_loss.shape)
+                # print_to_file(f'Client bóng thứ {i + 1}:', shadow_test_loss.shape)
                 shadow_test_losses.append(shadow_test_loss)
         elif attack_mode == "loss":
             shadow_train_losses.append(
@@ -357,10 +339,11 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
                     shadow_test_loss = np.concatenate([test_loss, mix_loss], axis=0)
                 else:
                     shadow_test_loss = -ce_loss_fn(mix_logit, mix_labels).cpu().numpy()
-                print_to_file(f'Client bóng thứ {i + 1}:', shadow_test_loss.shape)
+                # print_to_file(f'Client bóng thứ {i + 1}:', shadow_test_loss.shape)
                 shadow_test_losses.append(shadow_test_loss)
         else:
-            print_to_file(f"Unknown attack_mode: {attack_mode} for shadow model {i}")
+            # print_to_file(f"Unknown attack_mode: {attack_mode} for shadow model {i}")
+            pass
 
     # Ensure all arrays are the same length for stacking
     min_train_len = min([arr.shape[0] for arr in shadow_train_losses] + [target_train_loss.shape[0]])
@@ -372,15 +355,15 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
     shadow_train_losses_stack = np.vstack( shadow_train_losses )
     shadow_test_losses_stack = np.vstack( shadow_test_losses )
 
-    print_to_file('\nb. Giá trị trung bình (mean) và phương sai (var) của loss\n')
-    print_to_file(f"Target client train loss: mean = {target_train_loss.mean(axis=0)}, var = {target_train_loss.var(axis=0)}")
-    print_to_file(f"Target client test loss: mean = {target_test_loss.mean(axis=0)}, var = {target_test_loss.var(axis=0)}")
+    # print_to_file('\nb. Giá trị trung bình (mean) và phương sai (var) của loss\n')
+    # print_to_file(f"Target client train loss: mean = {target_train_loss.mean(axis=0)}, var = {target_train_loss.var(axis=0)}")
+    # print_to_file(f"Target client test loss: mean = {target_test_loss.mean(axis=0)}, var = {target_test_loss.var(axis=0)}")
 
-    i = 1
-    for train_loss, test_loss in zip(shadow_train_losses, shadow_test_losses):
-        print_to_file(f"Shadow client {i} train loss: mean = {train_loss.mean(axis=0)}, var = {train_loss.var(axis=0)}")
-        print_to_file(f"Shadow client {i} test loss: mean = {test_loss.mean(axis=0)}, var = {test_loss.var(axis=0)}")
-        i += 1
+    # i = 1
+    # for train_loss, test_loss in zip(shadow_train_losses, shadow_test_losses):
+    #     print_to_file(f"Shadow client {i} train loss: mean = {train_loss.mean(axis=0)}, var = {train_loss.var(axis=0)}")
+    #     print_to_file(f"Shadow client {i} test loss: mean = {test_loss.mean(axis=0)}, var = {test_loss.var(axis=0)}")
+    #     i += 1
 
     # Define indices to view for easier inspection
     view_list = [0, 1, 2, 3, 4, 500, 501, 502, 503, 504, -5, -4, -3, -2, -1]
@@ -396,34 +379,34 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
                 print_to_file(f"{'N/A':>10}", end='')
         print_to_file('')
 
-    print_to_file('\nc. Training Samples Overview\n')
-    print_to_file(f"{'Index':<10}", end='')
-    for idx in view_list:
-        print_to_file(f"{idx:>10}", end='')
-    print_to_file('')
+    # print_to_file('\nc. Training Samples Overview\n')
+    # print_to_file(f"{'Index':<10}", end='')
+    # for idx in view_list:
+    #     print_to_file(f"{idx:>10}", end='')
+    # print_to_file('')
 
-    print_row("Target", target_train_loss, view_list)
-    print_row("Mean", np.mean(shadow_train_losses_stack, axis=0), view_list)
-    print_row("Var", np.var(shadow_train_losses_stack, axis=0), view_list)
-    for i, train_loss in enumerate(shadow_train_losses, 1):
-        print_row(f"Shadow{i}", train_loss, view_list)
+    # print_row("Target", target_train_loss, view_list)
+    # print_row("Mean", np.mean(shadow_train_losses_stack, axis=0), view_list)
+    # print_row("Var", np.var(shadow_train_losses_stack, axis=0), view_list)
+    # for i, train_loss in enumerate(shadow_train_losses, 1):
+    #     print_row(f"Shadow{i}", train_loss, view_list)
 
-    print_to_file('\nd. Testing Samples Overview\n')
-    print_to_file(f"{'Index':<10}", end='')
-    for idx in view_list:
-        print_to_file(f"{idx:>10}", end='')
-    print_to_file('')
+    # print_to_file('\nd. Testing Samples Overview\n')
+    # print_to_file(f"{'Index':<10}", end='')
+    # for idx in view_list:
+    #     print_to_file(f"{idx:>10}", end='')
+    # print_to_file('')
 
-    print_row("Target", target_test_loss, view_list)
-    print_row("Mean", np.mean(shadow_test_losses_stack, axis=0), view_list)
-    print_row("Var", np.var(shadow_test_losses_stack, axis=0), view_list)
-    for i, test_loss in enumerate(shadow_test_losses, 1):
-        print_row(f"Shadow{i}", test_loss, view_list)
+    # print_row("Target", target_test_loss, view_list)
+    # print_row("Mean", np.mean(shadow_test_losses_stack, axis=0), view_list)
+    # print_row("Var", np.var(shadow_test_losses_stack, axis=0), view_list)
+    # for i, test_loss in enumerate(shadow_test_losses, 1):
+    #     print_row(f"Shadow{i}", test_loss, view_list)
     
-    print_to_file('\ne. Các cài đặt tấn công\n')
-    print_to_file('---> Cách tiền xử lý dữ liệu (none for iid / outlier for noniid):', select_method)
-    print_to_file('---> Tấn công dựa trên chỉ số (cos / diff / loss):', attack_mode)
-    print_to_file()
+    # print_to_file('\ne. Các cài đặt tấn công\n')
+    # print_to_file('---> Cách tiền xử lý dữ liệu (none for iid / outlier for noniid):', select_method)
+    # print_to_file('---> Tấn công dựa trên chỉ số (cos / diff / loss):', attack_mode)
+    # print_to_file()
 
     # === Tính toán mean và var cho phân phối chuẩn hóa (normalization) ===
     # Nếu là chế độ non-iid (select_mode == 1) và attack_mode là 'cos', dùng phương pháp loại bỏ outlier
@@ -464,44 +447,43 @@ def lira_attack_ldh_cosine(f, epch, K, save_dir, extract_fn = None, attack_mode=
         test_var_out = shadow_test_losses_stack.var(axis=0) + 1e-8
 
     # In thông tin kiểm tra
-    print_to_file(f'f. Các thông số trong lần tấn công epoch {epch}\n')
-    print_to_file('---> Target train loss', target_train_loss[:10])
-    print_to_file('---> Train mu out:', train_mu_out[:10])
-    print_to_file('---> Target test loss:', target_test_loss[:10])
-    print_to_file('---> Test mu out:', test_mu_out[:10])
+    # print_to_file(f'f. Các thông số trong lần tấn công epoch {epch}\n')
+    # print_to_file('---> Target train loss', target_train_loss[:10])
+    # print_to_file('---> Train mu out:', train_mu_out[:10])
+    # print_to_file('---> Target test loss:', target_test_loss[:10])
+    # print_to_file('---> Test mu out:', test_mu_out[:10])
 
     # Tính xác suất (likelihood) cho mẫu train và test dựa trên phân phối chuẩn
     train_l_out = scipy.stats.norm.cdf(target_train_loss, train_mu_out, np.sqrt(train_var_out))
     test_l_out = scipy.stats.norm.cdf(target_test_loss, test_mu_out, np.sqrt(test_var_out))
 
-    print_to_file(f"---> Độ lệch chuẩn train: {np.sqrt(train_var_out).mean():.4f}, test: {np.sqrt(test_var_out).mean():.4f}")
-    print_to_file(f"---> Mean/Var train_l_out: {train_l_out.mean():.4f}/{train_l_out.var():.4f}")
-    print_to_file(f"---> Mean/Var test_l_out: {test_l_out.mean():.4f}/{test_l_out.var():.4f}")
-    print_to_file(f"---> Kích thước train_l_out: {train_l_out.shape}, test_l_out: {test_l_out.shape}")
+    # print_to_file(f"---> Độ lệch chuẩn train: {np.sqrt(train_var_out).mean():.4f}, test: {np.sqrt(test_var_out).mean():.4f}")
+    # print_to_file(f"---> Mean/Var train_l_out: {train_l_out.mean():.4f}/{train_l_out.var():.4f}")
+    # print_to_file(f"---> Mean/Var test_l_out: {test_l_out.mean():.4f}/{test_l_out.var():.4f}")
+    # print_to_file(f"---> Kích thước train_l_out: {train_l_out.shape}, test_l_out: {test_l_out.shape}")
 
     # Hiển thị một số giá trị mẫu để kiểm tra
-    print_to_file("---> Một số giá trị train_l_out:", train_l_out[:5])
-    print_to_file("---> Một số giá trị test_l_out:", test_l_out[:5])
+    # print_to_file("---> Một số giá trị train_l_out:", train_l_out[:5])
+    # print_to_file("---> Một số giá trị test_l_out:", test_l_out[:5])
 
     # Kiểm tra các chỉ số outlier trong test_l_out (giá trị lớn hơn 0.8)
     outlier_indices = np.where(test_l_out > 0.8)[0]
-    print_to_file(f"---> Số lượng outlier test_l_out > 0.8: {len(outlier_indices)}")
-    if len(outlier_indices) > 0:
-        print_to_file("---> Một số giá trị outlier test_l_out:", test_l_out[outlier_indices[:5]])
-        print_to_file("---> Tương ứng target_test_loss:", target_test_loss[outlier_indices[:5]])
-        print_to_file("---> Tương ứng shadow_test_losses_stack:\n", shadow_test_losses_stack[:, outlier_indices[:5]])
+    # print_to_file(f"---> Số lượng outlier test_l_out > 0.8: {len(outlier_indices)}")
+    # if len(outlier_indices) > 0:
+    #     print_to_file("---> Một số giá trị outlier test_l_out:", test_l_out[outlier_indices[:5]])
+    #     print_to_file("---> Tương ứng target_test_loss:", target_test_loss[outlier_indices[:5]])
+    #     print_to_file("---> Tương ứng shadow_test_losses_stack:\n", shadow_test_losses_stack[:, outlier_indices[:5]])
 
     # Kiểm tra các chỉ số outlier trong train_l_out (giá trị nhỏ hơn 0.5)
     mem_outlier_indices = np.where(train_l_out < 0.5)[0]
-    print_to_file(f"---> Số lượng outlier train_l_out < 0.5: {len(mem_outlier_indices)}")
-    if len(mem_outlier_indices) > 0:
-        print_to_file("---> Một số giá trị outlier train_l_out:", train_l_out[mem_outlier_indices[:5]])
-        print_to_file("---> Tương ứng target_train_loss:", target_train_loss[mem_outlier_indices[:5]])
-        print_to_file("---> Tương ứng shadow_train_losses_stack:\n", shadow_train_losses_stack[:, mem_outlier_indices[:5]])
+    # print_to_file(f"---> Số lượng outlier train_l_out < 0.5: {len(mem_outlier_indices)}")
+    # if len(mem_outlier_indices) > 0:
+    #     print_to_file("---> Một số giá trị outlier train_l_out:", train_l_out[mem_outlier_indices[:5]])
+    #     print_to_file("---> Tương ứng target_train_loss:", target_train_loss[mem_outlier_indices[:5]])
+    #     print_to_file("---> Tương ứng shadow_train_losses_stack:\n", shadow_train_losses_stack[:, mem_outlier_indices[:5]])
 
     auc, log_auc, tprs = plot_auc("lira", torch.tensor(test_l_out), torch.tensor(train_l_out), epch)
     
-    print_to_file(f"\n<----------- FedMIA Attack Result (mode {attack_mode}) ----------->\n")
     print_to_file(f"---> True positive rate at different false positive rate: {tprs}\n---> Log AUC: {log_auc:.4f}")
 
     return accs, tprs, auc, log_auc, (train_l_out, test_l_out)
@@ -641,6 +623,7 @@ def attack_comparison(p, log_path, save_dir, epochs, MAX_CLIENTS, defence, seed)
     final_acc = None
 
     for epch in epochs:
+        print_to_file(f'\n==================== Attack at epoch {epch} ====================')
         lira_score = lira_attack_ldh_cosine(p,epch,MAX_CLIENTS,save_dir, extract_fn=extract_hinge_loss, attack_mode = 'cos') # Dựa trên cosine
         lira_loss_score = lira_attack_ldh_cosine(p,epch,MAX_CLIENTS,save_dir, extract_fn=extract_hinge_loss, attack_mode ='loss') # Dựa trên loss
         scores["lira"].append(lira_score[1]['0.001'])
@@ -682,115 +665,87 @@ def attack_comparison(p, log_path, save_dir, epochs, MAX_CLIENTS, defence, seed)
         single_score[f'200 {attack_mode}']=(scores[attack_mode][int(epochs[-1]/20)])
         single_score[f'200 single_{attack_mode}_auc'] = auc_dict[attack_mode][int(epochs[-1]/20)]
 
-    print_to_file('==================== Sequential attack ====================\n')  
+    print_to_file('\n==================== Tổng hợp kết quả các phương pháp tấn công ====================\n')
+
+    # 1. FedMIA-I (LIRA - Loss)
+    reses = reses_lira_loss
+    train_score = np.vstack([i[0].reshape(1, -1) for i in reses]).mean(axis=0)
+    test_score = np.vstack([i[1].reshape(1, -1) for i in reses]).mean(axis=0)
+    auc, log_auc, tprs = plot_auc("FedMIA-I (LIRA - Loss)", torch.tensor(test_score), torch.tensor(train_score), 999)
+    print_to_everything("---------- FedMIA-I (LIRA - Loss) ----------")
+    print_to_everything(f"  - Trung bình train score: {np.mean(train_score):.4f} (var: {np.var(train_score):.4f})")
+    print_to_everything(f"  - Trung bình test score: {np.mean(test_score):.4f} (var: {np.var(test_score):.4f})")
+    print_to_everything(f"  - TPR tại các FPR: {tprs}")
+    print_to_everything(f"  - AUC: {auc:.4f}, Log AUC: {log_auc:.4f}\n")
+    avg_scores["lira_loss"] = tprs
+    other_scores["lira_loss_auc"] = [auc, log_auc]
+
+    # 2. FedMIA-II (LIRA - Cosine)
     reses = reses_lira
-    train_score = np.vstack([ i[0].reshape(1,-1) for i in reses]).mean(axis=0)
-    test_score = np.vstack([ i[1].reshape(1,-1) for i in reses]).mean(axis=0)
+    train_score = np.vstack([i[0].reshape(1, -1) for i in reses]).mean(axis=0)
+    test_score = np.vstack([i[1].reshape(1, -1) for i in reses]).mean(axis=0)
+    auc, log_auc, tprs = plot_auc("FedMIA-II (LIRA - Cosine)", torch.tensor(test_score), torch.tensor(train_score), 999)
+    print_to_everything("---------- FedMIA-II (LIRA - Cosine) ----------")
+    print_to_everything(f"  - Trung bình train score: {np.mean(train_score):.4f} (var: {np.var(train_score):.4f})")
+    print_to_everything(f"  - Trung bình test score: {np.mean(test_score):.4f} (var: {np.var(test_score):.4f})")
+    print_to_everything(f"  - TPR tại các FPR: {tprs}")
+    print_to_everything(f"  - AUC: {auc:.4f}, Log AUC: {log_auc:.4f}\n")
+    avg_scores["lira"] = tprs
+    other_scores["lira_auc"] = [auc, log_auc]
 
-    print_to_file('avged train_score.shape:',train_score.shape)
-    print_to_file('******************************************')
-    print_to_file('***********check avg lira attack:*********')
-    print_to_file('******************************************')
-    print_to_file(np.mean(train_score),np.var(train_score), train_score.shape)
-    print_to_file(np.mean(test_score), np.var(test_score), test_score.shape)
+    # 3. Grad-Cosine (Avg-Cosine)
+    reses = reses_common["cosine attack"]
+    train_score = np.vstack([i[0].reshape(1, -1) for i in reses]).mean(axis=0)
+    test_score = np.vstack([i[1].reshape(1, -1) for i in reses]).mean(axis=0)
+    auc, log_auc, tprs = plot_auc("Grad-Cosine", torch.tensor(test_score), torch.tensor(train_score), 999)
+    print_to_everything("---------- Grad-Cosine (Trung bình) ----------")
+    print_to_everything(f"  - Trung bình train score: {np.mean(train_score):.4f} (var: {np.var(train_score):.4f})")
+    print_to_everything(f"  - Trung bình test score: {np.mean(test_score):.4f} (var: {np.var(test_score):.4f})")
+    print_to_everything(f"  - TPR tại các FPR: {tprs}")
+    print_to_everything(f"  - AUC: {auc:.4f}, Log AUC: {log_auc:.4f}\n")
+    avg_scores["cosine attack"] = tprs
+    other_scores["cos_attack_auc"] = [auc, log_auc]
 
+    # 4. Grad-Diff (Trung bình)
+    reses = reses_common["grad diff"]
+    train_score = np.vstack([i[0].reshape(1, -1) for i in reses]).mean(axis=0)
+    test_score = np.vstack([i[1].reshape(1, -1) for i in reses]).mean(axis=0)
+    auc, log_auc, tprs = plot_auc("Grad-Diff", torch.tensor(test_score), torch.tensor(train_score), 999)
+    print_to_everything("---------- Grad-Diff (Trung bình) ----------")
+    print_to_everything(f"  - Trung bình train score: {np.mean(train_score):.4f} (var: {np.var(train_score):.4f})")
+    print_to_everything(f"  - Trung bình test score: {np.mean(test_score):.4f} (var: {np.var(test_score):.4f})")
+    print_to_everything(f"  - TPR tại các FPR: {tprs}")
+    print_to_everything(f"  - AUC: {auc:.4f}, Log AUC: {log_auc:.4f}\n")
+    avg_scores["grad diff"] = tprs
+    other_scores["grad_diff_auc"] = [auc, log_auc]
 
-    auc,log_auc,tprs=plot_auc("averaged_lira",torch.tensor(test_score),torch.tensor(train_score),999)
-    print_to_file(f"averaged_lira tprs:{tprs} \n auc:{auc}")
-    avg_scores["lira"]=tprs
-    other_scores["lira_auc"]=[auc,log_auc]
-    print_to_file("success!")
+    # 5. Grad-Norm (Trung bình)
+    reses = reses_common["grad norm"]
+    train_score = -np.vstack([i[0].reshape(1, -1) for i in reses]).mean(axis=0)
+    test_score = -np.vstack([i[1].reshape(1, -1) for i in reses]).mean(axis=0)
+    auc, log_auc, tprs = plot_auc("Grad-Norm", torch.tensor(test_score), torch.tensor(train_score), 999)
+    print_to_everything("---------- Grad-Norm (Trung bình) ----------")
+    print_to_everything(f"  - Trung bình train score: {np.mean(train_score):.4f} (var: {np.var(train_score):.4f})")
+    print_to_everything(f"  - Trung bình test score: {np.mean(test_score):.4f} (var: {np.var(test_score):.4f})")
+    print_to_everything(f"  - TPR tại các FPR: {tprs}")
+    print_to_everything(f"  - AUC: {auc:.4f}, Log AUC: {log_auc:.4f}\n")
+    avg_scores["grad norm"] = tprs
+    other_scores["grad_norm_auc"] = [auc, log_auc]
 
-    reses=reses_lira_loss
-    train_score=np.vstack([ i[0].reshape(1,-1) for i in reses]).mean(axis=0)
-    test_score=np.vstack([ i[1].reshape(1,-1) for i in reses]).mean(axis=0)
-    #print_to_file(train_score.shape)
-    # assert 0
-    auc,log_auc,tprs=plot_auc("averaged_lira_loss",torch.tensor(test_score),torch.tensor(train_score),999)
-    print_to_file(f"averaged_lira_loss tprs:{tprs} \n auc:{auc}")
-    avg_scores["lira_loss"]=tprs
-    other_scores["lira_loss_auc"]=[auc,log_auc]
-    print_to_file("success!")
+    # 6. Blackbox-Loss (Trung bình)
+    reses = reses_common["loss based"]
+    train_score = np.vstack([i[0].reshape(1, -1) for i in reses]).mean(axis=0)
+    test_score = np.vstack([i[1].reshape(1, -1) for i in reses]).mean(axis=0)
+    auc, log_auc, tprs = plot_auc("Blackbox-Loss", torch.tensor(test_score), torch.tensor(train_score), 999)
+    print_to_everything("---------- Blackbox-Loss (Trung bình) ----------")
+    print_to_everything(f"  - Trung bình train score: {np.mean(train_score):.4f} (var: {np.var(train_score):.4f})")
+    print_to_everything(f"  - Trung bình test score: {np.mean(test_score):.4f} (var: {np.var(test_score):.4f})")
+    print_to_everything(f"  - TPR tại các FPR: {tprs}")
+    print_to_everything(f"  - AUC: {auc:.4f}, Log AUC: {log_auc:.4f}\n")
+    avg_scores["loss based"] = tprs
+    other_scores["loss_based_auc"] = [auc, log_auc]
 
-    reses=reses_lira
-    train_score=np.nanmean(1-np.log(np.vstack([ i[0].reshape(1,-1) for i in reses])),axis=0)
-    test_score=np.nanmean(1-np.log(np.vstack([ i[1].reshape(1,-1) for i in reses])),axis=0)
-    print_to_file(train_score.min(),train_score.max())
-    train_score=train_score[~(np.isnan(train_score))]
-    test_score=test_score[~(np.isnan(test_score))]
-    train_score[(np.isinf(train_score))]=-1e10
-    test_score[(np.isinf(test_score))]=-1e10
-    print_to_file(train_score.min(),train_score.max())
-    print_to_file(train_score.shape)
-    print_to_file('***********check avg log_lira attack:')
-    print_to_file(np.mean(train_score),np.var(train_score), train_score.shape)
-    print_to_file(np.mean(test_score), np.var(test_score), test_score.shape)
-    auc,log_auc,tprs=plot_auc("averaged_log_lira",torch.tensor(test_score),torch.tensor(train_score),999)
-    print_to_file(f"averaged_log_lira tprs:{tprs} \n auc:{auc}")
-    avg_scores["log_lira"]=tprs
-    other_scores["log_lira_auc"]=[auc,log_auc]
-    print_to_file("success!")
-
-    reses=reses_common["cosine attack"]
-    # print_to_file(reses)
-    # print_to_file(len(reses),len(reses[0]))
-    # assert 0
-    train_score=np.vstack([ i[0].reshape(1,-1) for i in reses]).mean(axis=0)
-    test_score=np.vstack([ i[1].reshape(1,-1) for i in reses]).mean(axis=0)
-    print_to_file('***********check avg cos attack:')
-    print_to_file(np.mean(train_score),np.var(train_score), train_score.shape)
-    print_to_file(np.mean(test_score), np.var(test_score), test_score.shape)
-
-    auc,log_auc,tprs=plot_auc("cosine attack",torch.tensor(test_score),torch.tensor(train_score),999)
-    avg_scores["cosine attack"]=tprs
-    other_scores["cos_attack_auc"]=[auc,log_auc]
-    print_to_file(f"averaged cosine attack tprs:{tprs} \n auc:{auc}")
-    print_to_file("success!")
-
-    reses=reses_common["grad diff"]
-    # print_to_file(reses)
-    # print_to_file(len(reses),len(reses[0]))
-    # assert 0
-    train_score=np.vstack([ i[0].reshape(1,-1) for i in reses]).mean(axis=0)
-    test_score=np.vstack([ i[1].reshape(1,-1) for i in reses]).mean(axis=0)
-    print_to_file('***********check avg grad diff attack:')
-    print_to_file(np.mean(train_score),np.var(train_score), train_score.shape)
-    print_to_file(np.mean(test_score), np.var(test_score), test_score.shape)
-    auc,log_auc,tprs=plot_auc("averaged_diff",torch.tensor(test_score),torch.tensor(train_score),999)
-    avg_scores["grad diff"]=tprs
-    other_scores["grad_diff_auc"]=[auc,log_auc]
-    print_to_file(f"averaged_diff tprs:{tprs} \n auc:{auc}")
-    print_to_file("success!")
-
-    reses=reses_common["grad norm"]
-    # print_to_file(reses)
-    # print_to_file(len(reses),len(reses[0]))
-    # assert 0
-    train_score=-np.vstack([ i[0].reshape(1,-1) for i in reses]).mean(axis=0)
-    test_score=-np.vstack([ i[1].reshape(1,-1) for i in reses]).mean(axis=0)
-    auc,log_auc,tprs=plot_auc("averaged_norm",torch.tensor(test_score),torch.tensor(train_score),999)
-    avg_scores["grad norm"]=tprs
-    other_scores["grad_norm_auc"]=[auc,log_auc]
-    print_to_file(f"tprs:{tprs}")
-    print_to_file("===> Success!!!")
-
-    reses=reses_common["loss based"]
-    # print_to_file(reses)
-    # print_to_file(len(reses),len(reses[0]))
-    # assert 0
-    train_score=np.vstack([ i[0].reshape(1,-1) for i in reses]).mean(axis=0)
-    test_score=np.vstack([ i[1].reshape(1,-1) for i in reses]).mean(axis=0)
-    print_to_file('***********check avg loss based attack:')
-    print_to_file(np.mean(train_score),np.var(train_score), train_score.shape)
-    print_to_file(np.mean(test_score), np.var(test_score), test_score.shape)
-
-    auc,log_auc,tprs=plot_auc("averaged_loss",torch.tensor(test_score),torch.tensor(train_score),999)
-    avg_scores["loss based"]=tprs
-    other_scores["loss_based_auc"]=[auc,log_auc]
-    print_to_file(f"averaged_loss tprs:{tprs} \n auc:{auc}")
-    print_to_file("===> Success!!!")
-
-    fig_out(epochs,MAX_CLIENTS, defence,seed,log_path,scores,avg_scores,single_score, other_scores,final_acc)
+    fig_out(epochs, MAX_CLIENTS, defence, seed, log_path, scores, avg_scores, single_score, other_scores, final_acc)
 
 # ==================== Hàm chính ====================
 
@@ -840,7 +795,6 @@ def main(argv):
                 SHADOW_NUM = 4
             
 
-            print_to_everything("==================== Các thông tin về cuộc tấn công ====================\n")
             print_to_everything(f"1. Thư mục log: {os.path.join(root, name)}")
             print_to_everything(f"2. Chế độ tấn công: {MODE}")
             print_to_everything(f"3. Định dạng các file model: {PATH}")
@@ -850,10 +804,9 @@ def main(argv):
             print_to_everything(f"9. Seed: {SEED}")
             print_to_everything(f"10. Model được sử dụng: {model}\n")
 
+
             if 'cifar100' in name:
                 mix_length = int(10000/MAX_CLIENTS)
-            elif 'dermnet' in name:
-                mix_length = 4000
             elif 'cicmaldroid' in name:
                 mix_length = 232
 
@@ -867,13 +820,13 @@ def main(argv):
             print_to_everything("---> Attacking...")
 
             try:
+                print_to_console("\n#################### Kết quả tấn công ####################\n")
                 attack_comparison(PATH, log_path, save_dir, epochs, MAX_CLIENTS, defence, seed)
-                print_to_console("#################### Kết quả tấn công ####################\n")
-                print_to_everything("===> Tấn công thành công! Kiểm tra file log để xem chi tiết!\n")
+                print_to_console("===> Tấn công thành công! Kiểm tra file log để xem chi tiết!\n")
             except IOError:
                 # Loại bỏ thông báo lỗi do kiểm tra file có tồn tại hay không trước khi truyền tham số vào tên file
                 if PATH != "log_fedmia/iid/cicmaldroid_K10_N5000_mlp_defnone_iid$1_$1_$sgd_local1_s18052025mlp/client_{}_losses_epoch{}.pkl":
-                    print_to_everything(f"===> OMG! File {PATH} not found!\n")
+                    print_to_console(f"===> OMG! File {PATH} not found!\n")
 
 if __name__ == "__main__":
     main(sys.argv)

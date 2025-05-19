@@ -44,7 +44,7 @@ if ! [[ "$seed" =~ ^[0-9]+$ ]]; then
 fi
 echo
 
-echo "#################### Quy trình tấn công ####################"
+echo "#################### Các thông tin về cuộc tấn công ####################"
 echo
 
 gpu_index=0 # Lấy index ứng với index GPU của máy
