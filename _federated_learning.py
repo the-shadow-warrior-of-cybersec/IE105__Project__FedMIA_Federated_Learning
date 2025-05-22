@@ -121,7 +121,6 @@ class FederatedLearning(Experiment):
         val_ldr = DataLoader(self.test_set, batch_size=self.batch_size , shuffle=False, num_workers=2)
         test_ldr = DataLoader(self.test_set, batch_size=self.batch_size , shuffle=False, num_workers=2)
 
-
         local_train_ldrs = []
         if args.iid:
             for i in range(self.num_users):

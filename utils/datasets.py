@@ -8,7 +8,8 @@ from torch.utils.data import Dataset
 from utils.sampling import *
 from torchvision.datasets.folder import pil_loader
 from _data_loader import CICMalDroidDataset
-from utils.sampling import cifar_iid_MIA, cifar_beta 
+from utils.sampling import cifar_iid_MIA, cifar_beta
+import pandas as pd
 
 
 def setup_seed(seed):
