@@ -808,7 +808,7 @@ def main(argv):
             if 'cifar100' in name:
                 mix_length = int(10000/MAX_CLIENTS)
             elif 'cicmaldroid' in name:
-                mix_length = 232
+                mix_length = 116 #232
 
             if model == "alexnet":
                 log_path="logs/log_alex"
