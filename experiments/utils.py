@@ -1,6 +1,5 @@
 import torch 
 import numpy as np
-from models.alexnet import AlexNet
 import torch.nn.functional as F
 
 def chunks(lst, n):
@@ -17,7 +16,6 @@ def label_to_onehot(target, num_classes):
 
 def cross_entropy_for_onehot(pred, target):
     return torch.mean(torch.sum(- target * F.log_softmax(pred, dim=-1), 1))
-
 
 def vec_mul_ten(vec, tensor):
     size = list(tensor.size())

@@ -12,12 +12,30 @@ fi
 path="log_fedmia/$temp"
 echo
 
+# Kiểm tra xem thư mục đã tồn tại chưa
+if [ ! -d "$path" ]; then
+    echo "Lỗi: Chưa có log về việc trên dữ liệu $temp!"
+    echo
+    exit 1
+fi
+
 read -p "Nhập số tổng epoch được dùng để train: " total_epoch
 if ! [[ "$total_epoch" =~ ^[0-9]+$ ]]; then
     echo "Lỗi: Total epoch phải là số nguyên!"
     exit 1
 fi
 echo
+
+# read -p "Nhập chế độ tấn công (train/val/test/mix): " attack_mode
+# if [[ "$attack_mode" != "train" && "$attack_mode" != "val" && "$attack_mode" != "test" && "$attack_mode" != "mix" ]]; then
+#     echo "Lỗi: Chế độ tấn công không tồn tại!"
+#     exit 1
+# fi
+# echo
+
+echo "---> Tự chọn chế độ tấn công tối ưu: Mix mode (lấy dữ liệu từ train + val + test)"
+echo
+attack_mode="mix"
 
 read -p "Nhập seed (int): " seed
 if ! [[ "$seed" =~ ^[0-9]+$ ]]; then
@@ -26,11 +44,8 @@ if ! [[ "$seed" =~ ^[0-9]+$ ]]; then
 fi
 echo
 
-echo "#################### Attacking... ####################"
+echo "#################### Các thông tin về cuộc tấn công ####################"
 echo
 
-# Lấy index ứng với index GPU của máy
-gpu=0
-
-# Chạy tấn công
-python -u _fed_membership_attack.py  ${path} ${total_epoch} ${gpu} ${seed}  
+gpu_index=0 # Lấy index ứng với index GPU của máy
+python -u _fed_membership_attack.py  ${path} ${total_epoch} ${attack_mode} ${gpu_index} ${seed}

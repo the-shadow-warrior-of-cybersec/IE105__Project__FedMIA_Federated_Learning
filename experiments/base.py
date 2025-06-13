@@ -1,9 +1,9 @@
 import csv
-import json
 import os
 import torch
 
 class Experiment(object):
+
     """
     1. load variables
     2. load dataset
@@ -23,24 +23,19 @@ class Experiment(object):
         self.buffer = []
         self.save_history_interval = 1
         self.device = torch.device('cuda')
-        
-        root =  os.getcwd()
         self.num_users = args.num_users
         self.model_name = args.model_name
         self.dataset = args.dataset
         self.iid= args.iid
         self.epochs = args.epochs
         self.batch_size = args.batch_size
-        self.lr = args.lr
-        
-        if args.dataset == 'cifar10':
+        self.lr = args.lr 
+        if args.dataset == 'cifar10': # Chưa test thử
             self.num_classes = 10
         if args.dataset == 'cifar100':
             self.num_classes = 100
         if args.dataset == 'cicmaldroid':
             self.num_classes = 5
-        
-        ## federated learning args
         self.frac = args.frac
         self.data_root = args.data_root
         self.local_ep = args.local_ep
@@ -57,29 +52,24 @@ class Experiment(object):
             return 1
 
     def makedirs_or_load(self):
-        # create directory like this: logdir/{expid}, expid + 1 if exist
 
+        # create directory like this: logdir/{expid}, expid + 1 if exist
         os.makedirs(self.logdir, exist_ok=True)
         if not self.eval:
             # create experiment directory
             self.experiment_id = self.get_expid(self.logdir, self.prefix)
-
             self.logdir = os.path.join(self.logdir, str(self.experiment_id))
-
             # create sub directory
             os.makedirs(os.path.join(self.logdir, 'models'), exist_ok=True)
-
         else:
             self.experiment_id = self.args.exp_id
             self.logdir = os.path.join(self.logdir, str(self.args.exp_id))
             path = os.path.join(self.logdir, 'models', 'best.pth')
-
             # check experiment exists
             if not os.path.exists(path):
                 print(f'Warning: No such Experiment -> {path}')
             else:
                 self.load_model('best.pth')
-
             self.model = self.model.to(self.device)
 
     def save_model(self, filename, model=None):

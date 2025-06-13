@@ -20,14 +20,14 @@ echo
 
 if [ "$dataset" == "cifar100" ]; then
     model_name="alexnet"
-    echo "---> Tự chọn model phù hợp với đặc điểm bộ dữ liệu: AlexNet"
+    echo "---> Tự chọn model phù hợp: AlexNet"
 else
     model_name="mlp"
-    echo "---> Tự chọn model phù hợp với đặc điểm bộ dữ liệu: Multilayer Perceptrontron"
+    echo "---> Tự chọn model phù hợp: Multilayer Perceptrontron"
 fi
 
 echo
-echo "---> Optimizer: Stochastic Gradient Descent"
+echo "---> Tự chọn optimizer phù hợp: Stochastic Gradient Descent"
 echo
 opt=sgd
 
@@ -43,6 +43,14 @@ echo
 read -p "Nhập learning rate (nên nhỏ hơn hoặc bằng 0.1): " lr
 if ! [[ "$lr" =~ ^[0-9]*\.?[0-9]+$ ]]; then
     echo "Lỗi: Learning rate phải là số."
+    exit 1
+fi
+echo
+
+# Nhập tổng số epoch
+read -p "Nhập tổng số epoch: " epochs
+if ! [[ "$epochs" =~ ^[0-9]+$ ]]; then
+    echo "Lỗi: epochs phải là số nguyên."
     exit 1
 fi
 echo
@@ -74,7 +82,7 @@ if [ "$choice" = "1" ]; then
     echo "#################### Thử nghiệm IID ####################"
     echo
     CUDA_VISIBLE_DEVICES=0 python _federated_learning.py --seed $seed --num_users 10 --iid 1 \
-     --dataset $dataset --model_name $model_name --epochs 100 --local_ep $local_epoch \
+     --dataset $dataset --model_name $model_name --epochs $epochs --local_ep $local_epoch \
      --lr $lr --batch_size 64 --optim $opt --save_dir $save_dir --log_folder_name $save_dir \
      --lr_up cosine --MIA_mode 1 --gpu 0 2>&1 | tee "${save_dir}/raw_logs"
 elif [ "$choice" = "2" ]; then
@@ -84,7 +92,7 @@ elif [ "$choice" = "2" ]; then
     echo "#################### Thử nghiệm Non-IID ####################"
     echo
     CUDA_VISIBLE_DEVICES=0 python _federated_learning.py --seed $seed --num_users 10 --iid 0 --beta 1.0 \
-     --dataset $dataset --model_name $model_name --epochs 100 --local_ep $local_epoch \
+     --dataset $dataset --model_name $model_name --epochs $epochs --local_ep $local_epoch \
      --lr $lr --batch_size 64 --optim $opt --save_dir $save_dir --log_folder_name $save_dir \
      --lr_up cosine --MIA_mode 1 --gpu 0 2>&1 | tee "${save_dir}/raw_logs"
 else
@@ -94,3 +102,4 @@ fi
 
 echo
 echo "#################### Hoàn thành thử nghiệm ####################"
+echo

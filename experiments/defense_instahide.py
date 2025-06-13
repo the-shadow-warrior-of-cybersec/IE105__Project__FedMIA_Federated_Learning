@@ -1,13 +1,9 @@
 import torch
 import numpy as np
-# from fedavg.datasets import get_dataset
-# from conf import conf
 from torch.autograd import Variable
 from experiments.utils import chunks, vec_mul_ten, insta_criterion
-import random
 
 klam = 3
-
 
 class defense_insta(object):
 
@@ -19,15 +15,12 @@ class defense_insta(object):
         :param val_df: Validation data DataFrame
         """
         # self.conf = conf
-
         # self.local_model = model
         # self.train_df = train_df
         # self.train_dataset = get_dataset(conf, self.train_df)
         self.train_loader = train_set 
         self.up_bound=up_bound
         self.klam=klam
-
-
         # self.val_loader = test_set
     
     def mixup_data(self, x, y, klam, use_cuda=True):
@@ -55,11 +48,8 @@ class defense_insta(object):
 
             sign = torch.randint(2, size=list(x.shape), device=device) * 2.0 - 1
             mixed_x *= sign.float().to(device)
-
-        
         return mixed_x, ys, lams
-
-    
+ 
     def generate_sample(self, trainloader, klam):
         use_cuda = torch.cuda.is_available()
         
@@ -72,7 +62,6 @@ class defense_insta(object):
                 inputs, targets.float(), klam, use_cuda)
 
         return (mix_inputs, mix_targets, lams)
-
         
     # def train(self, net, optimizer, inputs_all, mix_targets_all, lams, klam,batch_size):
     #     use_cuda = torch.cuda.is_available()
@@ -146,9 +135,6 @@ class defense_insta(object):
         if acc > best_acc:
             best_acc = acc
         return (test_loss / batch_idx, 100. * correct_1 / total)
-
-
-
 
 
     # def local_train(self, model, klam):

@@ -1,8 +1,3 @@
-'''
-Adapted from Pytorch official code
-CIFAR dataset classes that allow customized partition
-'''
-
 from PIL import Image
 import os
 import os.path
@@ -12,10 +7,8 @@ import pickle
 from torch.utils.data import Dataset
 import pandas as pd
 import io
-
 from torchvision.datasets import VisionDataset
 from torchvision.datasets.utils import check_integrity, download_and_extract_archive
-
 
 
 class CIFAR10(VisionDataset):
@@ -41,7 +34,6 @@ class CIFAR10(VisionDataset):
     }
 
     def __init__(self, root, indices, transform=None, target_transform=None, download=False,need_index=False):
-
         super(CIFAR10, self).__init__(root,
                                       transform=transform,
                                       target_transform=target_transform)
@@ -57,7 +49,6 @@ class CIFAR10(VisionDataset):
         self.indices = indices #
         self.need_index=need_index #
         
-
         # now load the picked numpy arrays
         for file_name, checksum in self.full_list:
             file_path = os.path.join(self.root, self.base_folder, file_name)
@@ -74,7 +65,8 @@ class CIFAR10(VisionDataset):
         self.data = self.data.transpose((0, 2, 3, 1))  # convert to HWC
         self.data = self.data[self.indices]  
         self.targets = np.array(self.targets)[self.indices] 
-        self.true_index = np.array([i for i in range(60000)])[self.indices] # The serial number of self.data in the original data set and the index of the data itself are also required.
+        self.true_index = np.array([i for i in range(60000)])[self.indices] 
+        # The serial number of self.data in the original data set and the index of the data itself are also required.
 
     def __getitem__(self, index):
         """
@@ -169,16 +161,12 @@ class CICMalDroidDataset(Dataset):
         if "Class" not in self.dataframe.columns:
             raise ValueError("Không tìm thấy cột 'Class' trong file CSV!")
 
-        # Nhãn gốc dùng cho bài toán phân loại 5 lớp
         self.labels = self.dataframe["Class"]
 
-        # Nếu bạn muốn thực hiện bài toán phân loại nhị phân:
-        # Giả sử rằng chỉ nhãn 'Benign' được xem là lành tính, mọi nhãn khác là độc hại.
         if mode == "binary":
             self.labels = self.labels.apply(lambda x: 0 if x.strip().lower() == "benign" else 1)
             self.classes = ["Benign", "Malicious"]
         else:
-            # Tiến hành mapping các lớp thành chỉ số số nguyên (ví dụ, sắp xếp theo thứ tự xuất hiện)
             unique_labels = self.labels.unique()
             self.label_map = {label: idx for idx, label in enumerate(sorted(unique_labels))}
             self.labels = self.labels.map(self.label_map)
@@ -188,6 +176,7 @@ class CICMalDroidDataset(Dataset):
 
         # Đặc trưng là tất cả các cột trừ cột "Class"
         self.features = self.dataframe.drop(columns=["Class"]).values.astype(float)
+
 
     def __len__(self):
         return len(self.features)

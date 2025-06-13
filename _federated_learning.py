@@ -20,6 +20,7 @@ from experiments.base import Experiment
 from experiments.trainer_private import TrainerPrivate, TesterPrivate
 from experiments.utils import quant
 import warnings
+import json
 
 
 class FederatedLearning(Experiment):
@@ -27,7 +28,7 @@ class FederatedLearning(Experiment):
     Perform federated learning
     """
     def __init__(self, args):
-        super().__init__(args) # Khởi tạo các tham số cho lớp FederatedLearning
+        super().__init__(args) 
         self.watch_train_client_id = 0
         self.watch_val_client_id = 1
         self.criterion = torch.nn.CrossEntropyLoss()
@@ -119,7 +120,6 @@ class FederatedLearning(Experiment):
         train_ldr = DataLoader(self.train_set, batch_size=self.batch_size, shuffle=False, num_workers=2)
         val_ldr = DataLoader(self.test_set, batch_size=self.batch_size , shuffle=False, num_workers=2)
         test_ldr = DataLoader(self.test_set, batch_size=self.batch_size , shuffle=False, num_workers=2)
-
 
         local_train_ldrs = []
         if args.iid:
@@ -238,7 +238,7 @@ class FederatedLearning(Experiment):
                         needed_test_indexs = None
                         # print('needed_test_indexs:',len(needed_test_indexs))
                     elif self.args.dataset == 'cicmaldroid':
-                        data_num = int(len(self.test_set) / self.num_users)
+                        data_num = max(int(len(self.test_set) / self.num_users), 300)
                     
                     for c_id in range(1,self.num_users):
                         mixed_indexs.extend(random.sample(list(self.train_idxs[c_id]), data_num))
@@ -359,6 +359,13 @@ class FederatedLearning(Experiment):
 
             self.w_t[k] = w_avg[k]
 
+# ========== Các hàm hỗ trợ ==========
+
+def setup_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
 def get_loss_distributions(idx, MIA_trainset_dir,MIA_testloader, MIA_valset_dir, model):
         """ Obtain the member and nonmember loss distributions"""
@@ -436,10 +443,10 @@ def get_all_cos(cos_model, initial_loader, test_dataloader, test_set, train_set,
         max_grad_norm=1e10,
     )
  
-    train_dataloader = DataLoader(DatasetSplit(train_set, train_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
+    train_dataloader = DataLoader(DatasetSplit(train_set, train_idxs), batch_size = 64 ,shuffle=False, num_workers=4)
     # val_dataloader = DataLoader(DatasetSplit(train_set, val_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
-    test_dataloader = DataLoader(DatasetSplit(test_set, needed_test_indexs), batch_size=10 , shuffle=False, num_workers=4)
-    mix_dataloader = DataLoader(DatasetSplit(train_set, mix_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
+    test_dataloader = DataLoader(DatasetSplit(test_set, needed_test_indexs), batch_size= 64 , shuffle=False, num_workers=4)
+    mix_dataloader = DataLoader(DatasetSplit(train_set, mix_idxs), batch_size = 64 ,shuffle=False, num_workers=4)
     
     train_cos, train_diffs,train_norm=get_cos_score(train_dataloader,optimizer,cos_model,device,model_grads)
     # val_cos,val_diffs,val_norm=get_cos_score(val_dataloader,optimizer,cos_model,device,model_grads)
@@ -489,6 +496,8 @@ def get_cos_score(samples_ldr,optimizer,cos_model,device,model_grads ):
 
     return  torch.tensor(cos_scores).cpu(), torch.tensor(grad_diffs).cpu(), torch.tensor(sample_grads).cpu()
 
+# ========== Main ==========
+
 def main(args):
     logs = {'net_info': None,
             'arguments': {
@@ -517,20 +526,12 @@ def main(args):
     logs['test_acc'] = test_acc
     logs['bp_local'] = True if args.bp_interval == 0 else False
 
-    if not os.path.exists(save_dir + args.model_name +'/' + args.dataset):
-        os.makedirs(save_dir + args.model_name +'/' + args.dataset)
-    torch.save(logs,
-               save_dir + args.model_name +'/' + args.dataset + '/epoch_{}_E_{}_u_{}_{:.4f}_{:.4f}.pkl'.format(
-                    args.epochs, args.local_ep, args.num_users, time, test_acc
-               ))
+    if not os.path.exists(save_dir + '/' + '_final_model'):
+        os.makedirs(save_dir + '/' + '_final_model')
+    torch.save(logs, save_dir + '/' + '_final_model' + '/epoch_{}_E_{}_u_{}_{:.4f}_{:.4f}.pkl'.format(
+        args.epochs, args.local_ep, args.num_users, time, test_acc
+    ))
     return
-
-def setup_seed(seed):
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-
 
 if __name__ == '__main__':
     args = parser_args()
