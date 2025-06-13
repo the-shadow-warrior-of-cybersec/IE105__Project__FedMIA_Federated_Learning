@@ -2,5 +2,7 @@ utils/__pycache__
 models/__pycache__
 experiments/__pycache__
 Data
-log_fedmia
+log_fedmia/
 .venv
+_Old_result/
+__pycache__

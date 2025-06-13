@@ -75,7 +75,10 @@ class FederatedLearning(Experiment):
         self.MIA_trainset_dir_cos=[]
         self.MIA_valset_dir_cos=[]
         self.train_idxs_cos=[]
-        self.testset_idx=(50000 + np.arange(10000)).astype(int)
+        if self.args.dataset == 'cicmaldroid':
+            self.testset_idx = np.arange(9598, 11597).astype(int)  # 2000 mẫu test
+        else:
+            self.testset_idx = (50000 + np.arange(10000)).astype(int)
 
         print()
         print('==> Preparing model...')
@@ -443,10 +446,10 @@ def get_all_cos(cos_model, initial_loader, test_dataloader, test_set, train_set,
         max_grad_norm=1e10,
     )
  
-    train_dataloader = DataLoader(DatasetSplit(train_set, train_idxs), batch_size = 64 ,shuffle=False, num_workers=4)
+    train_dataloader = DataLoader(DatasetSplit(train_set, train_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
     # val_dataloader = DataLoader(DatasetSplit(train_set, val_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
-    test_dataloader = DataLoader(DatasetSplit(test_set, needed_test_indexs), batch_size= 64 , shuffle=False, num_workers=4)
-    mix_dataloader = DataLoader(DatasetSplit(train_set, mix_idxs), batch_size = 64 ,shuffle=False, num_workers=4)
+    test_dataloader = DataLoader(DatasetSplit(test_set, needed_test_indexs), batch_size= 10 , shuffle=False, num_workers=4)
+    mix_dataloader = DataLoader(DatasetSplit(train_set, mix_idxs), batch_size = 10 ,shuffle=False, num_workers=4)
     
     train_cos, train_diffs,train_norm=get_cos_score(train_dataloader,optimizer,cos_model,device,model_grads)
     # val_cos,val_diffs,val_norm=get_cos_score(val_dataloader,optimizer,cos_model,device,model_grads)
