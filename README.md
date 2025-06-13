@@ -64,7 +64,8 @@ bash 2_run_fed_membership_attack.sh
 
 ## 🧪 Kết quả
 
-Kết quả của quá trình huấn luyện và tấn công sẽ được lưu trong thư mục `experiments/`. Bạn có thể tìm thấy các biểu đồ, số liệu và mô hình đã được huấn luyện tại đây.
+Kết quả của quá trình huấn luyện và tấn công sẽ được lưu trong thư mục `log/`. Bạn có thể tìm thấy các biểu đồ, số liệu và mô hình đã được huấn luyện tại đây.
+Kết quả của tác giả sẽ nằm trong thư mục _result
 
 ## 📚 Tài liệu Tham khảo
 
