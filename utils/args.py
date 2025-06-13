@@ -10,7 +10,7 @@ def parser_args():
                         help='saving path')
     parser.add_argument('--log_folder_name', type=str, default='/training_log_correct_iid/',
                         help='saving path')
-    parser.add_argument('--samples_per_user', type=int, default=5000,
+    parser.add_argument('--samples_per_user', type=int, default=960, #5000 if cifar100
                         help="the number of samples in per user")
     parser.add_argument('--defense', type=str, default="none",
                         help="defense method:[mix_up, instahide, quant, sparse]")
@@ -29,7 +29,7 @@ def parser_args():
                         help="the fraction of clients: C")
     parser.add_argument('--local_ep', type=int, default=1,
                         help="the number of local epochs: E")
-    parser.add_argument('--batch_size', type=int, default=100,
+    parser.add_argument('--batch_size', type=int, default=64,
                         help="local batch size: B")
     parser.add_argument('--lr_outer', type=float, default=1,
                         help="learning rate")
