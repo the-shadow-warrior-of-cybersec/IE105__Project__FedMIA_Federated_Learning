@@ -1,5 +1,3 @@
----
-
 # Đồ án IE105 – Tìm hiểu cách tấn công trong mô hình Học Liên kết
 
 ## 📌 Giới thiệu
